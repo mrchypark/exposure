@@ -1,0 +1,17 @@
+{
+  "path": "/api/v1/exposure-authz/plant-read",
+  "request": {
+    "exposureId": "patch-data-plant-profile",
+    "exposureVersion": 1,
+    "artifactDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "resourceId": "plant-a",
+    "requestBinding": "import-e2e-binding",
+    "operationId": "plant.get"
+  },
+  "expectedResponseSemantics": {
+    "operationId": "plant.get",
+    "providerId": "patch-data",
+    "actionId": "patch-data.plant.read",
+    "resourceType": "plant"
+  }
+}

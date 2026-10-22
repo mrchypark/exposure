@@ -1,0 +1,17 @@
+# Go build and test artifacts
+/exposure
+*.test
+*.out
+coverage.*
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editor and operating-system artifacts
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~

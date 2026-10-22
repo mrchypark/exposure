@@ -1,0 +1,151 @@
+name: build and push versioned image
+
+on:
+  workflow_call:
+    inputs:
+      application-name:
+        description: '빌드할 이미지의 이름입니다.'
+        required: true
+        type: string
+      version:
+        description: '이미지 태그와 VERSION build arg에 사용할 버전입니다. 예: 0.36.8'
+        required: true
+        type: string
+      dockerfile:
+        description: '빌드를 위한 도커파일 위치입니다.'
+        default: './Dockerfile'
+        type: string
+      context:
+        description: '도커 빌드 컨텍스트입니다.'
+        default: './'
+        type: string
+      ref:
+        description: 'checkout할 Git ref입니다. 비워두면 workflow를 호출한 ref를 사용합니다.'
+        default: ''
+        type: string
+      arch:
+        description: '빌드할 아키텍처입니다.'
+        default: 'linux/amd64'
+        type: string
+      latest:
+        description: 'latest 태그도 함께 푸시할지 여부입니다.'
+        default: false
+        type: boolean
+      build-args:
+        description: '추가 docker build args입니다.'
+        default: ''
+        type: string
+      push:
+        description: '이미지를 레지스트리에 푸시할지 여부입니다.'
+        default: true
+        type: boolean
+      output-types:
+        description: '빌드 후 출력할 타입입니다.'
+        default: 'type=registry'
+        type: string
+    secrets:
+      GCP_SA_KEY:
+        required: true
+      GCP_REGISTRY_HOST:
+        required: true
+      GCP_PROJECT_ID:
+        required: true
+      GCP_REPOSITORY:
+        required: true
+    outputs:
+      image_version:
+        description: '빌드된 이미지 버전입니다.'
+        value: ${{ jobs.build.outputs.image_version }}
+      image_tags:
+        description: '빌드된 전체 이미지 태그 목록입니다.'
+        value: ${{ jobs.build.outputs.image_tags }}
+      revision:
+        description: '빌드 결과를 식별하는 revision입니다.'
+        value: ${{ jobs.build.outputs.revision }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_version: ${{ steps.version.outputs.image_version }}
+      image_tags: ${{ steps.tags.outputs.tags }}
+      revision: ${{ steps.version.outputs.revision }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Set version outputs
+        id: version
+        run: |
+          {
+            echo "image_version=${{ inputs.version }}"
+            echo "revision=${{ inputs.version }}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set image tags
+        id: tags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image="${{ secrets.GCP_REGISTRY_HOST }}/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_REPOSITORY }}/${{ inputs.application-name }}"
+          tags="${image}:${{ inputs.version }}"
+
+          if [[ "${{ inputs.latest }}" == "true" ]]; then
+            tags="${tags}"$'\n'"${image}:latest"
+          fi
+
+          {
+            echo "tags<<EOF"
+            echo "${tags}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up QEMU
+        if: ${{ inputs.arch != 'linux/amd64' }}
+        uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd
+
+      - name: Login to Google Artifact Registry
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
+        with:
+          registry: ${{ secrets.GCP_REGISTRY_HOST }}
+          username: _json_key
+          password: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Build and push
+        uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.arch }}
+          push: ${{ inputs.push }}
+          outputs: ${{ inputs.output-types }}
+          provenance: false
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha,scope=${{ inputs.application-name }}-build
+          cache-to: type=gha,mode=max,scope=${{ inputs.application-name }}-build
+          build-args: |
+            VERSION=${{ inputs.version }}
+            IMAGE_TAGS=${{ inputs.version }}
+            BUILD_HASH=${{ github.sha }}
+            BUILD_BRANCH=${{ github.ref_name }}
+            BUILD_VERSION=${{ inputs.version }}
+            ${{ inputs.build-args }}
+
+      - name: Build summary
+        run: |
+          {
+            echo "## Build outputs"
+            echo
+            echo "- revision: ${{ steps.version.outputs.revision }}"
+            echo "- image_version: ${{ steps.version.outputs.image_version }}"
+            echo "- image_tags:"
+            echo '```'
+            echo '${{ steps.tags.outputs.tags }}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

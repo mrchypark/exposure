@@ -1,0 +1,295 @@
+# Intentionally fail-closed: replace every __REQUIRED_*__ value after review.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grant-compos-exposure-v1
+  annotations:
+    stage-a.conalog.io/authorized-target: gke_patch2-the-new-era_asia-northeast3_ied-cluster
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: compos-hiqlite
+  namespace: grant-compos-exposure-v1
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: __REQUIRED_COMPOS_HIQLITE_STORAGE_SIZE__
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: exposure-read-artifacts-patch-data-v1
+  namespace: grant-compos-exposure-v1
+immutable: true
+data:
+  read-artifacts.json: |
+    [{"artifactType":"exposure.read.v1","exposureId":"customer-profile","exposureVersion":1,"artifactDigest":"sha256:f03f2684ba9cf86c0fb5c3aa915eddd5f3f2523f2df4ea43014205634f854585","source":{"namespace":"wks_default","objectType":"otp_builtin_company_wks_default","schemaDigest":"sha256:ff37152682230e96eee7376ef415e7357d88846ea34bf78bb3555a2630371cf7"},"projectionPointers":["/domain","/employee_count"]},{"artifactType":"exposure.read.v1","exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"sha256:2782d8f92dca0b7a3e507ebad602cb95461c344230511e9cd22b5b39a8cf4ee7","source":{"kind":"patch-data.plant.v1","operation":"plant.get"},"projectionPointers":["/id","/name","/updated"]}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rauthy-bootstrap-renderer
+  namespace: grant-compos-exposure-v1
+data:
+  render-rauthy-bootstrap.sh: |
+    #!/bin/sh
+    set -eu
+
+    template_dir="${1:-/bootstrap-template}"
+    output_dir="${2:-/bootstrap}"
+    client_secret="${GRANT_RAUTHY_CLIENT_SECRET:?missing GRANT_RAUTHY_CLIENT_SECRET}"
+    client_read_key="${GRANT_RAUTHY_CLIENT_READ_API_KEY:?missing GRANT_RAUTHY_CLIENT_READ_API_KEY}"
+    client_read_name="${client_read_key%%\$*}"
+    client_read_secret="${client_read_key#*\$}"
+
+    [ "$client_read_name" != "$client_read_key" ] || { echo "GRANT_RAUTHY_CLIENT_READ_API_KEY must contain name\$secret" >&2; exit 1; }
+
+    case "$client_secret" in
+      *[!A-Za-z0-9]*|'') echo "GRANT_RAUTHY_CLIENT_SECRET must be alphanumeric" >&2; exit 1 ;;
+    esac
+    case "$client_read_name" in
+      *[!A-Za-z0-9_/-]*|'') echo "GRANT_RAUTHY_CLIENT_READ_API_KEY has an invalid name" >&2; exit 1 ;;
+    esac
+    case "$client_read_secret" in
+      *[!A-Za-z0-9]*|'') echo "GRANT_RAUTHY_CLIENT_READ_API_KEY must contain name\$alphanumeric-secret" >&2; exit 1 ;;
+    esac
+    [ "${#client_secret}" -ge 64 ] || { echo "GRANT_RAUTHY_CLIENT_SECRET must be at least 64 characters" >&2; exit 1 ; }
+    [ "${#client_read_name}" -ge 2 ] && [ "${#client_read_name}" -le 24 ] || { echo "GRANT_RAUTHY_CLIENT_READ_API_KEY name must be 2-24 characters" >&2; exit 1 ; }
+    [ "${#client_read_secret}" -ge 64 ] || { echo "GRANT_RAUTHY_CLIENT_READ_API_KEY secret must be at least 64 characters" >&2; exit 1 ; }
+
+    umask 077
+    mkdir -p "$output_dir"
+    clients_tmp="$output_dir/.clients.json.tmp"
+    api_keys_tmp="$output_dir/.api_keys.json.tmp"
+    trap 'rm -f "$clients_tmp" "$api_keys_tmp"' 0 HUP INT TERM
+    sed "s|__GRANT_RAUTHY_CLIENT_SECRET__|$client_secret|g" \
+      "$template_dir/clients.json" >"$clients_tmp"
+    sed \
+      -e "s|__GRANT_RAUTHY_CLIENT_READ_API_KEY_NAME__|$client_read_name|g" \
+      -e "s|__GRANT_RAUTHY_CLIENT_READ_API_KEY_SECRET__|$client_read_secret|g" \
+      "$template_dir/api_keys.json" >"$api_keys_tmp"
+    if [ "$(id -u)" -eq 0 ]; then
+      chown 10001:10001 "$clients_tmp" "$api_keys_tmp"
+    fi
+    chmod 0400 "$clients_tmp" "$api_keys_tmp"
+    mv -f "$clients_tmp" "$output_dir/clients.json"
+    mv -f "$api_keys_tmp" "$output_dir/api_keys.json"
+    trap - 0 HUP INT TERM
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: grant-compos-exposure-stage-a
+  namespace: grant-compos-exposure-v1
+  labels:
+    app.kubernetes.io/name: exposure
+  annotations:
+    stage-a.conalog.io/grant-bind: "127.0.0.1:8080"
+    stage-a.conalog.io/replacement-policy: delete-recreate
+spec:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile: {type: RuntimeDefault}
+  volumes:
+    - name: compos-hiqlite
+      persistentVolumeClaim: {claimName: compos-hiqlite}
+    - name: exposure-artifacts
+      configMap: {name: exposure-read-artifacts-patch-data-v1}
+    - name: grant-hiqlite
+      emptyDir: {}
+    - name: rauthy-config
+      secret:
+        secretName: rauthy-config
+        items:
+          - {key: config.toml, path: config.toml}
+    - name: rauthy-bootstrap-template
+      secret:
+        secretName: rauthy-config
+        items:
+          - {key: clients.json, path: clients.json}
+          - {key: api_keys.json, path: api_keys.json}
+    - name: rauthy-renderer
+      configMap:
+        name: rauthy-bootstrap-renderer
+        defaultMode: 0555
+    - name: rauthy-bootstrap
+      emptyDir: {}
+    - name: rauthy-data
+      emptyDir: {}
+  initContainers:
+    - name: render-rauthy-bootstrap
+      image: busybox:1.36@sha256:73aaf090f3d85aa34ee199857f03fa3a95c8ede2ffd4cc2cdb5b94e566b11662
+      command: ["/bin/sh", "/renderer/render-rauthy-bootstrap.sh", "/bootstrap-template", "/bootstrap"]
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+      env:
+        - name: GRANT_RAUTHY_CLIENT_SECRET
+          valueFrom: {secretKeyRef: {name: grant-stage-a-secrets, key: GRANT_RAUTHY_CLIENT_SECRET}}
+        - name: GRANT_RAUTHY_CLIENT_READ_API_KEY
+          valueFrom: {secretKeyRef: {name: grant-stage-a-secrets, key: GRANT_RAUTHY_CLIENT_READ_API_KEY}}
+      volumeMounts:
+        - {name: rauthy-renderer, mountPath: /renderer, readOnly: true}
+        - {name: rauthy-bootstrap-template, mountPath: /bootstrap-template, readOnly: true}
+        - {name: rauthy-bootstrap, mountPath: /bootstrap}
+  containers:
+    - name: compos
+      image: asia-northeast3-docker.pkg.dev/patch2-the-new-era/conalog/compos-server@sha256:1a3fc8072914e3ba3eabac7c00cc3ada549fb976db3649dcdf83ed074d4c4d5f
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+      env:
+        - {name: COMPOS_BIND, value: "127.0.0.1:7878"}
+        - {name: COMPOS_STORAGE, value: hiqlite}
+        - {name: COMPOS_BOOTSTRAP_DEFAULT_WORKSPACE, value: "1"}
+        - {name: COMPOS_CONALOG_AUTO_WORKSPACE_ID, value: wks_default}
+        - {name: COMPOS_CONALOG_AUTO_WORKSPACE_ROLE, value: member}
+        - {name: COMPOS_QUORUM_CLUSTER_ID, value: grant-compos-exposure-v1}
+        - {name: COMPOS_QUORUM_GENERATION, value: "1"}
+        - {name: COMPOS_QUORUM_CONTROL_MODE, value: active}
+        - {name: HQL_NODE_ID, value: "1"}
+        - name: HQL_NODES
+          value: |-
+            1 127.0.0.1:8100 127.0.0.1:8200
+        - {name: HQL_LISTEN_ADDR_RAFT, value: "127.0.0.1"}
+        - {name: HQL_LISTEN_ADDR_API, value: "127.0.0.1"}
+        - name: HQL_SECRET_RAFT
+          valueFrom: {secretKeyRef: {name: compos-stage-a-secrets, key: HQL_SECRET_RAFT}}
+        - name: HQL_SECRET_API
+          valueFrom: {secretKeyRef: {name: compos-stage-a-secrets, key: HQL_SECRET_API}}
+        - {name: HQL_DATA_DIR, value: /data/hiqlite}
+        - {name: HQL_FILENAME_DB, value: hiqlite.db}
+        - {name: HQL_LEARNER_ONLY, value: "false"}
+        - name: ENC_KEY_ACTIVE
+          valueFrom: {secretKeyRef: {name: compos-stage-a-secrets, key: ENC_KEY_ACTIVE}}
+        - name: ENC_KEYS
+          valueFrom: {secretKeyRef: {name: compos-stage-a-secrets, key: ENC_KEYS}}
+        - name: COMPOS_PROJECTION_SIGNING_KEY_ID
+          valueFrom: {secretKeyRef: {name: compos-stage-a-secrets, key: __REQUIRED_COMPOS_PROJECTION_SIGNING_KEY_ID_SECRET_KEY__}}
+        - name: COMPOS_PROJECTION_SIGNING_SEED_B64
+          valueFrom: {secretKeyRef: {name: compos-stage-a-secrets, key: __REQUIRED_COMPOS_PROJECTION_SIGNING_SEED_B64_SECRET_KEY__}}
+      volumeMounts:
+        - {name: compos-hiqlite, mountPath: /data/hiqlite}
+      readinessProbe:
+        exec: {command: ["/usr/bin/curl", "-fsS", "http://127.0.0.1:7878/api/v1/health"]}
+        initialDelaySeconds: 2
+        periodSeconds: 5
+    - name: grant
+      image: asia-northeast3-docker.pkg.dev/patch2-the-new-era/mrchypark/grant@sha256:0ff2803c26f61206a0becbf531a0fbaa908e5512bccc5ffacf4f16e7c4a3e1ca
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+      envFrom:
+        # Required keys: GRANT_MASTER_KEY, GRANT_APP_AUTH_KEY,
+        # GRANT_RAUTHY_CLIENT_ID, GRANT_RAUTHY_CLIENT_SECRET,
+        # GRANT_RAUTHY_CLIENT_READ_API_KEY, HQL_SECRET_RAFT, HQL_SECRET_API,
+        # ENC_KEYS, ENC_KEY_ACTIVE.
+        - secretRef:
+            name: grant-stage-a-secrets
+      env:
+        - {name: GRANT_RUNTIME_MODE, value: embedded}
+        - {name: GRANT_LOCAL_NODE_ROLE, value: voter}
+        - {name: GRANT_READ_CONSISTENCY, value: strong}
+        - {name: GRANT_BIND_ADDR, value: "127.0.0.1:8080"}
+        - {name: GRANT_RAUTHY_BASE_URL, value: "http://127.0.0.1:8081"}
+        - {name: HQL_NODE_ID, value: "1"}
+        - name: HQL_NODES
+          value: |-
+            1 127.0.0.1:8110 127.0.0.1:8210
+        - {name: HQL_LISTEN_ADDR_RAFT, value: "127.0.0.1"}
+        - {name: HQL_LISTEN_ADDR_API, value: "127.0.0.1"}
+      volumeMounts:
+        - {name: grant-hiqlite, mountPath: /var/lib/grant/hiqlite}
+        - {name: rauthy-config, mountPath: __REQUIRED_GRANT_RAUTHY_CONFIG_MOUNT_PATH__, readOnly: true}
+      startupProbe:
+        exec:
+          command: ["/usr/bin/curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+        failureThreshold: 30
+        periodSeconds: 2
+      livenessProbe:
+        exec:
+          command: ["/usr/bin/curl", "-fsS", "http://127.0.0.1:8080/healthz"]
+        initialDelaySeconds: 2
+        periodSeconds: 5
+      readinessProbe:
+        exec:
+          command: ["/usr/bin/curl", "--fail-early", "-fsS", "http://127.0.0.1:8080/readyz", "http://127.0.0.1:8081/auth/v1/health"]
+        initialDelaySeconds: 2
+        periodSeconds: 5
+    - name: rauthy
+      image: asia-northeast3-docker.pkg.dev/patch2-the-new-era/mrchypark/grant-rauthy-launcher@sha256:03bf98c29f7189c51ddb90c66425578eff324d32ab2f4ba526b5d8cd1a587202
+      command: ["/usr/local/bin/rauthy-launcher"]
+      args: ["/app/rauthy", "serve"]
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+      env:
+        - {name: LISTEN_ADDRESS, value: "127.0.0.1"}
+        - {name: LISTEN_PORT_HTTP, value: "8081"}
+        - {name: LISTEN_SCHEME, value: http}
+        - {name: HQL_NODE_ID, value: "1"}
+        - name: HQL_NODES
+          value: |-
+            1 127.0.0.1:8120 127.0.0.1:8220
+        - {name: HQL_LISTEN_ADDR_RAFT, value: "127.0.0.1"}
+        - {name: HQL_LISTEN_ADDR_API, value: "127.0.0.1"}
+        - {name: RAUTHY_LAUNCHER_HEALTH_URL, value: "http://127.0.0.1:8220/ready"}
+      volumeMounts:
+        - {name: rauthy-config, mountPath: /app/config.toml, subPath: config.toml, readOnly: true}
+        - {name: rauthy-bootstrap, mountPath: /app/bootstrap, readOnly: true}
+        - {name: rauthy-data, mountPath: /app/data}
+    - name: exposure
+      image: __REQUIRED_EXPOSURE_IMAGE_DIGEST__
+      securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: ["ALL"]}}
+      ports:
+        - {name: http, containerPort: 8082, protocol: TCP}
+      env:
+        - {name: EXPOSURE_ADDR, value: ":8082"}
+        - {name: EXPOSURE_GRANT_LEARNER_URL, value: "http://127.0.0.1:8080"}
+        - {name: EXPOSURE_PATCH_DATA_URL, value: "http://patch-data.patch.svc.cluster.local:8090"}
+        - name: EXPOSURE_PATCH_DATA_SERVICE_TOKEN
+          valueFrom: {secretKeyRef: {name: exposure-stage-a-secrets, key: __REQUIRED_EXPOSURE_PATCH_DATA_SERVICE_TOKEN_SECRET_KEY__}}
+        - {name: EXPOSURE_READ_ARTIFACTS_FILE, value: /var/run/exposure-artifacts/read-artifacts.json}
+        - name: EXPOSURE_GRANT_APP_AUTH_KEY
+          valueFrom: {secretKeyRef: {name: exposure-stage-a-secrets, key: __REQUIRED_EXPOSURE_GRANT_APP_AUTH_KEY_SECRET_KEY__}}
+      volumeMounts:
+        - {name: exposure-artifacts, mountPath: /var/run/exposure-artifacts, readOnly: true}
+      livenessProbe:
+        httpGet: {path: /healthz, port: http, scheme: HTTP}
+        initialDelaySeconds: 2
+        periodSeconds: 5
+      readinessProbe:
+        httpGet: {path: /readyz, port: http, scheme: HTTP}
+        initialDelaySeconds: 2
+        periodSeconds: 5
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exposure
+  namespace: grant-compos-exposure-v1
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: exposure
+  ports:
+    - {name: http, port: 80, targetPort: http, protocol: TCP}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: exposure-stage-a
+  namespace: grant-compos-exposure-v1
+spec:
+  parentRefs:
+    - name: dev-gateway
+      namespace: haproxy-gateway-system
+      port: 443
+      sectionName: https-exposure-stage-a-dev-conalog-com
+  hostnames:
+    - exposure-stage-a.dev.conalog.com
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: exposure
+          port: 80

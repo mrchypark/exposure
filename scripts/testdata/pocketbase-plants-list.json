@@ -1,0 +1,89 @@
+{
+  "capabilityId": "plants.list.name",
+  "version": 1,
+  "enabled": true,
+  "accessMode": "authorized",
+  "method": "GET",
+  "pathTemplate": "/api/collections/plants/records",
+  "actionId": "patch-data.plant.read",
+  "resource": {
+    "type": "plant",
+    "id": {
+      "kind": "constant",
+      "value": "plants"
+    }
+  },
+  "query": {
+    "mode": "exact",
+    "parameters": [
+      {
+        "name": "filter",
+        "format": "text",
+        "required": false,
+        "maxBytes": 4096
+      },
+      {
+        "name": "page",
+        "format": "uint",
+        "required": false
+      },
+      {
+        "name": "perPage",
+        "format": "uint",
+        "required": false
+      },
+      {
+        "name": "skipTotal",
+        "format": "bool",
+        "required": false
+      },
+      {
+        "name": "sort",
+        "format": "text",
+        "required": false,
+        "maxBytes": 1024
+      }
+    ]
+  },
+  "request": {
+    "body": "none",
+    "maxBytes": 0,
+    "forwardHeaders": [
+      "accept"
+    ],
+    "authorization": "service-token"
+  },
+  "response": {
+    "maxBytes": 1048576,
+    "forwardHeaders": [
+      "content-type"
+    ],
+    "redirects": "deny",
+    "errorStatuses": [
+      400,
+      403,
+      404
+    ]
+  },
+  "contractDigest": "",
+  "recordScope": {
+    "filterParameter": "filter",
+    "rowKey": "id",
+    "grammar": "fexpr",
+    "maxIds": 100,
+    "maxFilterBytes": 8192,
+    "allowedFields": [
+      "created",
+      "id",
+      "isArchive",
+      "name",
+      "updated"
+    ],
+    "sortParameter": "sort",
+    "pagination": {
+      "pageParameter": "page",
+      "pageSizeParameter": "perPage",
+      "skipTotalParameter": "skipTotal"
+    }
+  }
+}

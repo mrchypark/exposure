@@ -1,0 +1,56 @@
+name: Stage A CI and publish
+
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    permissions:
+      contents: read
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with:
+          go-version-file: go.mod
+      - name: Verify Go and Stage A artifacts
+        run: |
+          sh ./deploy/verify-runtime-tools.sh
+          set +e
+          ./deploy/stage-a-dev/test-stage-a.sh
+          stage_a_rc=$?
+          set -e
+          test "$stage_a_rc" -eq 1
+          ./deploy/stage-a-dev/test-stage-a.sh --fixture
+          go test ./deploy/stage-a-dev
+          go test ./...
+          go test -race ./...
+          go vet ./...
+          go build -o /tmp/exposure ./cmd/exposure
+          docker build --check .
+  publish:
+    needs: verify
+    if: false
+    permissions:
+      contents: read
+    uses: ./.github/workflows/buildandpush-versioned.yaml
+    with:
+      application-name: exposure
+      version: sha-${{ github.sha }}
+      dockerfile: ./Dockerfile
+      context: ./
+      ref: ${{ github.sha }}
+      arch: linux/amd64
+      latest: false
+      push: true
+      output-types: type=registry
+    secrets:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+      GCP_REGISTRY_HOST: ${{ secrets.GCP_REGISTRY_HOST }}
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GCP_REPOSITORY: ${{ secrets.GCP_REPOSITORY }}

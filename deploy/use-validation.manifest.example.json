@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "implementation": {
+    "patchDataCommit": "0000000000000000000000000000000000000000",
+    "patchDataImage": "registry.invalid/patch-data@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "grantCommit": "0000000000000000000000000000000000000000",
+    "grantImage": "registry.invalid/grant@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "exposureCommit": "0000000000000000000000000000000000000000",
+    "exposureImage": "registry.invalid/exposure@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "artifacts": {
+    "authoritySnapshotExporter": {
+      "image": "registry.invalid/grant@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "/usr/local/bin/grant-patch-data-authority-snapshot"
+    },
+    "runValidator": {
+      "image": "registry.invalid/exposure@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "path": "/usr/local/bin/exposure-validate-run"
+    }
+  },
+  "authoritySnapshot": {"sourceId":"patch-data","generation":1,"snapshotDigest":"sha256:0000000000000000000000000000000000000000000000000000000000000000","artifactSha256":"sha256:0000000000000000000000000000000000000000000000000000000000000000","path":"/absolute/path/snapshot.json"},
+  "contract": {"operationId":"plant.get","version":1,"digest":"sha256:7ca72b56a8f32ab247d4d8dc936b30cedf2f9995c1ad8cc5b2f2703dc20f488d"},
+  "run": {"id":"run-id","path":"/absolute/path/run.json","digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"},
+  "cleanup": {"id":"cleanup-id","path":"/absolute/path/cleanup.json","digest":"sha256:0000000000000000000000000000000000000000000000000000000000000000"}
+}

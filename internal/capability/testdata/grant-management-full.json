@@ -1,0 +1,3668 @@
+{
+  "schemaVersion": 1,
+  "generation": 1,
+  "expectedLatestGeneration": null,
+  "capabilities": [
+    {
+      "capabilityId": "management.user.read.0",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/me",
+      "actionId": "grant-management.user.read",
+      "resource": {
+        "type": "service",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:9f9c9f411ccd01ed4a7565f312e95cf12e6c957b741ecef9b5f85ec00db2068a"
+    },
+    {
+      "capabilityId": "management.user.materialize.1",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/me/ensure",
+      "actionId": "grant-management.user.materialize",
+      "resource": {
+        "type": "service",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:529af42d1cec65f232281a8df0ebf98abbf6c240d3d891521486da70f35e53d7"
+    },
+    {
+      "capabilityId": "management.provider.list.2",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/providers",
+      "actionId": "grant-management.provider.list",
+      "resource": {
+        "type": "service",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:22ef0465a9201579c1ed9100274edfae1eaf8cc5faab1fdfb4573fdabaa0aa5b"
+    },
+    {
+      "capabilityId": "management.organization.list.3",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs",
+      "actionId": "grant-management.organization.list",
+      "resource": {
+        "type": "service",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:b2fe51e48d38c5136262e28738555d2d069a6e8e55c2cf1d2720ae2498cfde08"
+    },
+    {
+      "capabilityId": "management.organization.create.4",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs",
+      "actionId": "grant-management.organization.create",
+      "resource": {
+        "type": "service",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:b0cc2fa7e55d88bfa4bd6d5cfef858d697f118f5d301de4db99652d03c26610a"
+    },
+    {
+      "capabilityId": "management.organization.owner.read.5",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/owner",
+      "actionId": "grant-management.organization.owner.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:af576e8e3fe27b2f13554fbe5b779e94867bbd16e357077827f2f9cfbb88f299"
+    },
+    {
+      "capabilityId": "management.organization.owner.transfer.6",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/owner",
+      "actionId": "grant-management.organization.owner.transfer",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "if-match",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:38f8c6ed6af8ba15b6bca580621f752b6e9a50164f454458beae267e012b2337"
+    },
+    {
+      "capabilityId": "management.organization.detail.7",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}",
+      "actionId": "grant-management.organization.detail",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:910040036982632ea65db41c426f5a8afa7d1c8758a97b2549925ea135deb9e7"
+    },
+    {
+      "capabilityId": "management.organization.update.8",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/orgs/{organizationId}",
+      "actionId": "grant-management.organization.update",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:4a97a94e828d51530452a44c3ac8b677794d7a9fbea183cdaad5893a5eae75c3"
+    },
+    {
+      "capabilityId": "management.admin.organization.create.9",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/admin/orgs",
+      "actionId": "grant-management.admin.organization.create",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:7a31c0becc390f34b78e1d2257d00ad5ede7c95f428f1daf9f173e997c8ba1c5"
+    },
+    {
+      "capabilityId": "management.applications.read.10",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps",
+      "actionId": "grant-management.applications.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:57f830c8b8c2b63bdfd49acbc3b60fa8cd913e2f4e2b2a239ab07c34cd3bc5eb"
+    },
+    {
+      "capabilityId": "management.applications.create.11",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps",
+      "actionId": "grant-management.applications.create",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:6b7cded072ce27462e29d152864481551ca32b14c8581d868c43a91b3f253684"
+    },
+    {
+      "capabilityId": "management.applications.detail.12",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}",
+      "actionId": "grant-management.applications.detail",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:4dd254354924571631f4c9de6fd63ee2417dec277d2654d50f1162f4e73208f5"
+    },
+    {
+      "capabilityId": "management.applications.update.13",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}",
+      "actionId": "grant-management.applications.update",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:f1ab4fa3d7e7ef889a1b7b1cf32c67a6df137f11ec38c83ee9a0aa19e768dcb4"
+    },
+    {
+      "capabilityId": "management.applications.active.14",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/active",
+      "actionId": "grant-management.applications.active",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:c87a2bb30933de67de26d3e054d8b8e31015841e70a8f3f4af33b5ae940e24cc"
+    },
+    {
+      "capabilityId": "management.applications.delete.15",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}",
+      "actionId": "grant-management.applications.delete",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:55be0abf887ad56d3f22c002a5ad2f1a05ba8eda699c384dfb23b0be4cb81429"
+    },
+    {
+      "capabilityId": "management.applications.actions.read.16",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/actions",
+      "actionId": "grant-management.applications.actions.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:eef08413fca3b44110405e955028f8428876fb6d7957e711c297b5d139363f7a"
+    },
+    {
+      "capabilityId": "management.applications.actions.replace.17",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/actions",
+      "actionId": "grant-management.applications.actions.replace",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "if-match",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:49c2c3784c598fe74e6dd8f6a48feafe24c0e707252cd15cdcdeb7bc4b4e056c"
+    },
+    {
+      "capabilityId": "management.applications.actions.add.18",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/actions/{actionId}",
+      "actionId": "grant-management.applications.actions.add",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:7d45a83a694c37c285226ce138ec6d993ce44ff29323e41b6b6220847397c325"
+    },
+    {
+      "capabilityId": "management.applications.actions.remove.19",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/actions/{actionId}",
+      "actionId": "grant-management.applications.actions.remove",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:45a3b128817d9415ea2975df97410203f51a12446cdfe038ac752250599d6816"
+    },
+    {
+      "capabilityId": "management.applications.grants.read.20",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/app-grants",
+      "actionId": "grant-management.applications.grants.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:2488259d76727ab2b50bb33415819f01eb646d6bfbdc8e41e9442f12028a201c"
+    },
+    {
+      "capabilityId": "management.applications.grants.revoke.21",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/app-grants/{grantId}",
+      "actionId": "grant-management.applications.grants.revoke",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:eb76ff1959d8cc1c3fe55f8d75d14aa5d44e18ac9d7e00e48638632c35b2cb30"
+    },
+    {
+      "capabilityId": "management.applications.consent.read.22",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/consent",
+      "actionId": "grant-management.applications.consent.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:5bf5a7a9a09035f54973f213f4cd9f318c3678a730bb65e5ff80096870c7f071"
+    },
+    {
+      "capabilityId": "management.applications.consent.replace.23",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/consent",
+      "actionId": "grant-management.applications.consent.replace",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "if-match",
+          "if-none-match",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:259688c8474a6e90d772f4fc6ba57aa75062ac99a1afa7ddd80012b26c8d8711"
+    },
+    {
+      "capabilityId": "management.applications.consent.delete.24",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/apps/{applicationId}/consent",
+      "actionId": "grant-management.applications.consent.delete",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:59c2d6baa119cbbd0ddfc76113c180c245824095901901e2057bb55e909da1a8"
+    },
+    {
+      "capabilityId": "management.groups.read.25",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups",
+      "actionId": "grant-management.groups.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:c005c87e0ccfca918c70423d536942eaaa069a713a5390d112a975a9364a0170"
+    },
+    {
+      "capabilityId": "management.groups.create.26",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups",
+      "actionId": "grant-management.groups.create",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:66a57201531315915c9ed23c2ac18eb04f7e5ae35de13ee1aa21220c49ed2e6a"
+    },
+    {
+      "capabilityId": "management.groups.detail.27",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}",
+      "actionId": "grant-management.groups.detail",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:ed9b43e8d589b2ae03e21650aa5f1a8b23f38353e0f8a9b1874da8167a1d9bfc"
+    },
+    {
+      "capabilityId": "management.groups.update.28",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}",
+      "actionId": "grant-management.groups.update",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:7bbe2b4662312865df28c93e07663fb8e417742e4488503cb89f67fdb4f24a44"
+    },
+    {
+      "capabilityId": "management.groups.patch.29",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}",
+      "actionId": "grant-management.groups.patch",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:26a1010e9ade4756264747a9d7d014ae15eade46743df21de846185b664e1f5b"
+    },
+    {
+      "capabilityId": "management.groups.delete.30",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}",
+      "actionId": "grant-management.groups.delete",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:18a58142e4a857b4c3c070c5b7082cf4c050e4025d6c8b07c0945e251cd64a99"
+    },
+    {
+      "capabilityId": "management.groups.members.read.31",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}/members",
+      "actionId": "grant-management.groups.members.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:ddb9b04e1aab0b0970754776e72d4b28aaf3fd680de05d3a38889b229ca3b3e2"
+    },
+    {
+      "capabilityId": "management.groups.members.add.32",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}/members/{userId}",
+      "actionId": "grant-management.groups.members.add",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:7694ccb0528cabb1e0579b0fbb47fce7748746a72f280202e638ac2f6488becb"
+    },
+    {
+      "capabilityId": "management.groups.members.remove.33",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/groups/{groupId}/members/{userId}",
+      "actionId": "grant-management.groups.members.remove",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:0a6fa02e4f7800251abec4aedb1b3117e0958a8d5665951371c94381b76af834"
+    },
+    {
+      "capabilityId": "management.members.enroll.34",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/members/{userId}",
+      "actionId": "grant-management.members.enroll",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:6c04c3515c287af0b5796d10e05f7471ea32e2d763eb21b0a19f301d4070ee73"
+    },
+    {
+      "capabilityId": "management.members.read.35",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/members",
+      "actionId": "grant-management.members.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:379f7380a601ebb13dc1d528db0f32ff1d50e60538fcd45a73a9a589fd544ce2"
+    },
+    {
+      "capabilityId": "management.members.remove.36",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/members/{userId}",
+      "actionId": "grant-management.members.remove",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:273af52153b14d07ab9e5c65aac1f14f43a53cd1676154b3c04956f9e0cd5da6"
+    },
+    {
+      "capabilityId": "management.agreements.read.37",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/agreements",
+      "actionId": "grant-management.agreements.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:30deaca1310f6d2c8920b6beebbed7643b74f177ab12cba2918238a1cc6e4030"
+    },
+    {
+      "capabilityId": "management.agreements.create.38",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/agreements",
+      "actionId": "grant-management.agreements.create",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:ee37c16fabcedb19714e3d7114d2701a2ea1d7096cdb6da9303a7aa62081f3e2"
+    },
+    {
+      "capabilityId": "management.agreements.detail.39",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/agreements/{agreementId}",
+      "actionId": "grant-management.agreements.detail",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:02c224ee9dc30b9e5fa2836380ef6eed18a2d3a2c03687077043f9fc3cb4df28"
+    },
+    {
+      "capabilityId": "management.agreements.update.40",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/agreements/{agreementId}",
+      "actionId": "grant-management.agreements.update",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:5db39fd9cf207b68cf6add86a47d8d6f8b327713f1944e06d6f1f6b615b91fc2"
+    },
+    {
+      "capabilityId": "management.agreements.patch.41",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/agreements/{agreementId}",
+      "actionId": "grant-management.agreements.patch",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:2c92b0c9be7de621fd84c7c8444bd6ed73a2cfbc58aee5d4d81cd3bbeb2980ed"
+    },
+    {
+      "capabilityId": "management.roles.read.42",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles",
+      "actionId": "grant-management.roles.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:09963cec9f02e52c87c753af278d1dd5ffaab251c08fa1bf3e200e56156e79ec"
+    },
+    {
+      "capabilityId": "management.roles.create.43",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles",
+      "actionId": "grant-management.roles.create",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:4226941a79ce1c595b8a9f4667315e717cbe2e5311908732f18c49ffe51e0b24"
+    },
+    {
+      "capabilityId": "management.role.update.44",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles/{roleId}",
+      "actionId": "grant-management.role.update",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:5f1ce6016a3a4016c6d1b7777d60f1ce707d1bda25c47ba3be6cd86f3f68665d"
+    },
+    {
+      "capabilityId": "management.role.delete.45",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles/{roleId}",
+      "actionId": "grant-management.role.delete",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:1ec83c7b4fbb159ff17498a1dc5e2dcb78c0c3f22ab4a91a14e10978ff5f5929"
+    },
+    {
+      "capabilityId": "management.role.actions.replace.46",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles/{roleId}/actions",
+      "actionId": "grant-management.role.actions.replace",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "if-match",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:0228be9cbf25423cd53a3020b1448abd2a7e85e9747dcb1a9aac86052f0330c0"
+    },
+    {
+      "capabilityId": "management.role.actions.read.47",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles/{roleId}/actions",
+      "actionId": "grant-management.role.actions.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:b81cbc6556faee4984596da08ad0c2acca9b836956e3c7e72a8c94cebab0ee95"
+    },
+    {
+      "capabilityId": "management.role.actions.add.48",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles/{roleId}/actions/{actionId}",
+      "actionId": "grant-management.role.actions.add",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:211dd4e6fcf9f797d8f9d74ae782a18a2017b94653d0b10d6105e36a8828dcac"
+    },
+    {
+      "capabilityId": "management.role.actions.remove.49",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/roles/{roleId}/actions/{actionId}",
+      "actionId": "grant-management.role.actions.remove",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:4aaa09ca9860df0f4a0c6727294f2f65ab20126e288f42295321eda11e867d75"
+    },
+    {
+      "capabilityId": "management.bindings.read.50",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/bindings",
+      "actionId": "grant-management.bindings.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:f366e0c1b0b4952a9ff32995ab21c0c03e697ded6429a981cbda89f56307d5b5"
+    },
+    {
+      "capabilityId": "management.bindings.create.51",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/bindings",
+      "actionId": "grant-management.bindings.create",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:75c31e1c6e355368fb9f63a7e2eec1a11bde2032dfe48b5bfb00fb2d0297b539"
+    },
+    {
+      "capabilityId": "management.bindings.delete.52",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/bindings/{bindingId}",
+      "actionId": "grant-management.bindings.delete",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:f58e3f17f035cc147fa417037a9bc6245035ab4c0f968fa66500228c27f9df66"
+    },
+    {
+      "capabilityId": "management.organization.deactivate.53",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/deactivate",
+      "actionId": "grant-management.organization.deactivate",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:2789a62683c3486650d35e8859f3e2a5d78fdba625ccb0241089f5b12b6e1986"
+    },
+    {
+      "capabilityId": "management.organization.reactivate.54",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/reactivate",
+      "actionId": "grant-management.organization.reactivate",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:b0d4103421222361a217625f591a31bac409d3bce72b0112956220adab78de8b"
+    },
+    {
+      "capabilityId": "management.admin.provider.create.55",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/admin/providers",
+      "actionId": "grant-management.admin.provider.create",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:c5ecf0f6306138fe55f18841afc12a3ad19b07b39c2ab64e62d9ded5f396a0d8"
+    },
+    {
+      "capabilityId": "management.admin.provider.update.56",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}",
+      "actionId": "grant-management.admin.provider.update",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:31c2d7819261502e31a23438fa1ff25522e5d466113f6107507ac03f6313a717"
+    },
+    {
+      "capabilityId": "management.admin.provider.actions.replace.57",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/actions",
+      "actionId": "grant-management.admin.provider.actions.replace",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "if-match",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:77366cdf8bb994177a08682d33010aaf0bc97dcf321fa6ccf236f01e71c1c03d"
+    },
+    {
+      "capabilityId": "management.admin.provider.actions.read.58",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/actions",
+      "actionId": "grant-management.admin.provider.actions.read",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:880a23a970cdde24524633de3fe07a679ad2e0dd3cb2a6009eeeadd8dbbf0427"
+    },
+    {
+      "capabilityId": "management.admin.provider.actions.create.59",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/actions",
+      "actionId": "grant-management.admin.provider.actions.create",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:4dc25a2cc74f4ee1b4a4434b7fce6e2f83990a27bc00f5aaab5e6480b9618444"
+    },
+    {
+      "capabilityId": "management.admin.provider.actions.update.60",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PATCH",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/actions/{actionId}",
+      "actionId": "grant-management.admin.provider.actions.update",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:6e304a9ddff34afe1a010d6df807063940accbaa7c8967a5e4e304d236b739f5"
+    },
+    {
+      "capabilityId": "management.admin.provider.actions.delete.61",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "DELETE",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/actions/{actionId}",
+      "actionId": "grant-management.admin.provider.actions.delete",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:010756e74db4dd8b17ec977c03de7295d39f418b76a1efa3af840acc1e4ddd89"
+    },
+    {
+      "capabilityId": "management.admin.org.providers.actions.read.62",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/orgs/{organizationId}/providers/{providerId}/actions",
+      "actionId": "grant-management.admin.org.providers.actions.read",
+      "resource": {
+        "type": "organization",
+        "id": {
+          "kind": "pathSegment",
+          "name": "organizationId",
+          "format": "asciiToken"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:4ac0357d65ade6b7ab7042aefc771490812b1c04b59e1076ae4ec6dad644dbc3"
+    },
+    {
+      "capabilityId": "management.admin.catalog.read.63",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "GET",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/http-capability-active",
+      "actionId": "grant-management.admin.catalog.read",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "exact",
+        "parameters": [
+          {
+            "name": "consistency",
+            "format": "text",
+            "required": false,
+            "maxBytes": 32
+          }
+        ]
+      },
+      "request": {
+        "body": "none",
+        "maxBytes": 0,
+        "forwardHeaders": [
+          "x-organization-id"
+        ],
+        "authorization": "forward-user"
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:bf1cada9e54c15e4cf56b5b1d2bb4895d3ceeabc8c9b02d6026671afe46bb9ff"
+    },
+    {
+      "capabilityId": "management.admin.catalog.stage.64",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/http-capability-generations",
+      "actionId": "grant-management.admin.catalog.stage",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:6c2f4a828b751640babe43db38b1d247abcc2e318c22abab7ed9bef741b3ca62"
+    },
+    {
+      "capabilityId": "management.admin.catalog.activate.65",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "POST",
+      "pathTemplate": "/api/v1/admin/providers/{providerId}/http-capability-active",
+      "actionId": "grant-management.admin.catalog.activate",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:164e7413f0c9d1c8265ae5a425ea1221671776f24d24c409408d27f9a4cc8b35"
+    },
+    {
+      "capabilityId": "management.admin.app.trust.66",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/admin/orgs/{organizationId}/apps/{applicationId}/trust",
+      "actionId": "grant-management.admin.app.trust",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:885dbedb2d9b8e2dc4ce2fc2e66dff5dd7e09616bddae9272452536da7eebeb5"
+    },
+    {
+      "capabilityId": "management.admin.app.identity.bind.67",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/admin/orgs/{organizationId}/apps/{applicationId}/identity-binding",
+      "actionId": "grant-management.admin.app.identity.bind",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:a8709c937ee64a0b4f479d55b819aa29a4261b37e724638224f3bb7ae96d5743"
+    },
+    {
+      "capabilityId": "management.admin.user.active.68",
+      "version": 1,
+      "enabled": true,
+      "accessMode": "authorized",
+      "method": "PUT",
+      "pathTemplate": "/api/v1/admin/users/{userId}/active",
+      "actionId": "grant-management.admin.user.active",
+      "resource": {
+        "type": "platform",
+        "id": {
+          "kind": "constant",
+          "value": "grant"
+        }
+      },
+      "query": {
+        "mode": "none"
+      },
+      "request": {
+        "body": "json",
+        "maxBytes": 2097152,
+        "forwardHeaders": [
+          "content-type",
+          "x-organization-id"
+        ],
+        "authorization": "forward-user",
+        "contentTypes": [
+          "application/json"
+        ]
+      },
+      "response": {
+        "maxBytes": 4194304,
+        "forwardHeaders": [
+          "content-type",
+          "etag"
+        ],
+        "redirects": "deny",
+        "errorStatuses": [
+          400,
+          401,
+          403,
+          404,
+          409,
+          412,
+          422,
+          428,
+          500,
+          503
+        ]
+      },
+      "contractDigest": "sha256:b2b3184f6906d2caa6c3c342a1a0a543d099c109d73e8ea673774a973ef88471"
+    }
+  ],
+  "catalogDigest": "sha256:79cca38c10114d88570bc062b4d7f419bb167ffbfde8125ac21e06432742f1cb"
+}
