@@ -296,8 +296,7 @@ done
 test ! -e "$root/.github/workflows/publish-stage-a-image.yml" || fail "obsolete dispatch publisher remains"
 rg -F 'branches: [main, "feature/**"]' "$workflow" >/dev/null || fail "CI must trigger on main and feature branches"
 rg -F 'needs: verify' "$workflow" >/dev/null || fail "publish must require CI"
-rg -F "github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'mrchypark/exposure'" "$workflow" >/dev/null || fail "publish must use merged main in the canonical repository"
-rg -F "github.repository == 'mrchypark/exposure'" "$workflow" >/dev/null || fail "publish must require canonical repository"
+rg -F '    if: false' "$workflow" >/dev/null || fail "legacy GCP publisher must remain disabled"
 rg -F 'uses: ./.github/workflows/buildandpush-versioned.yaml' "$workflow" >/dev/null || fail "pinned reusable publisher missing"
 for value in 'application-name: exposure' 'version: sha-${{ github.sha }}' 'dockerfile: ./Dockerfile' 'context: ./' 'ref: ${{ github.sha }}' 'arch: linux/amd64' 'latest: false' 'push: true' 'output-types: type=registry' 'GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}' 'GCP_REGISTRY_HOST: ${{ secrets.GCP_REGISTRY_HOST }}' 'GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}' 'GCP_REPOSITORY: ${{ secrets.GCP_REPOSITORY }}'; do
   rg -F "$value" "$workflow" >/dev/null || fail "publisher contract missing: $value"
