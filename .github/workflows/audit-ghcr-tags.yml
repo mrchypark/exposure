@@ -1,0 +1,27 @@
+name: Temporary GHCR tag audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: List package version IDs, digests, and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}
+        run: |
+          set -eu
+          gh api --paginate "users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME}/versions?per_page=100" \
+            | jq -s '[.[][] | {id, digest: .name, tags: .metadata.container.tags}]' \
+            > ghcr-versions.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ghcr-tag-audit
+          path: ghcr-versions.json
+          retention-days: 3
