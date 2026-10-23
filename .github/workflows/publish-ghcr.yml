@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ghcr-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   publish:
     runs-on: ubuntu-24.04
@@ -46,14 +50,15 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE: ghcr.io/${{ github.repository }}
           PACKAGE_NAME: ${{ github.event.repository.name }}
+          PACKAGE_OWNER: ${{ github.repository_owner }}
           BUILD_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           set -eu
-          revision_digest="$(docker buildx imagetools inspect "$IMAGE:sha-$GITHUB_SHA" --format '{{.Digest}}')"
-          latest_digest="$(docker buildx imagetools inspect "$IMAGE:latest" --format '{{.Digest}}')"
+          revision_digest="$(docker buildx imagetools inspect "$IMAGE:sha-$GITHUB_SHA" --format '{{.Manifest.Digest}}')"
+          latest_digest="$(docker buildx imagetools inspect "$IMAGE:latest" --format '{{.Manifest.Digest}}')"
           test "$revision_digest" = "$BUILD_DIGEST"
           test "$latest_digest" = "$BUILD_DIGEST"
-          visibility="$(gh api "user/packages/container/$PACKAGE_NAME" --jq .visibility)"
+          visibility="$(gh api "users/$PACKAGE_OWNER/packages/container/$PACKAGE_NAME" --jq .visibility)"
           test "$visibility" = private
           {
             echo '## GHCR publication verified'
