@@ -1,0 +1,68 @@
+name: Temporary GHCR latest cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: ghcr-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Verify exact approved version, delete it, and preserve v0.1.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}
+          TARGET_ID: "1433047019"
+          TARGET_DIGEST: sha256:b882180c2e6547afcba7e252dcd1fe790a6013773d3d4876c3ec5195c60a8672
+          TARGET_SHA_TAG: sha-82e8e275dfca90497cd0faeee6d3e4691e4b8009
+          PROTECTED_DIGEST: sha256:68c1287c8faa7076ab30cda518e488c24fb8dec85cccdcb933ec227f810efc62
+        run: |
+          set -eu
+          endpoint="users/${GITHUB_REPOSITORY_OWNER}/packages/container/${PACKAGE_NAME}/versions"
+          gh api --paginate "$endpoint?per_page=100" | jq -s '[.[][] | {id, digest: .name, tags: .metadata.container.tags}]' > before.json
+          jq -e --argjson id "$TARGET_ID" --arg digest "$TARGET_DIGEST" --arg sha "$TARGET_SHA_TAG" --arg protected "$PROTECTED_DIGEST" '
+            ([.[] | select(.id == $id and .digest == $digest and (.tags | sort) == (["latest", $sha] | sort))] | length) == 1 and
+            ([.[] | select(.digest == $protected and (.tags | index("v0.1.0") != null))] | length) == 1
+          ' before.json >/dev/null
+
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          latest_digest="$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}:latest" --format '{{.Manifest.Digest}}')"
+          test "$latest_digest" = "$TARGET_DIGEST"
+          protected_before="$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}:v0.1.0" --format '{{.Manifest.Digest}}')"
+          test "$protected_before" = "$PROTECTED_DIGEST"
+
+          gh api --method DELETE "$endpoint/$TARGET_ID"
+          set +e
+          gh api --include "$endpoint/$TARGET_ID" > deleted-version-response.txt 2>&1
+          get_status=$?
+          set -e
+          test "$get_status" -ne 0
+          sed -n '1p' deleted-version-response.txt | rg -q '404'
+
+          gh api --paginate "$endpoint?per_page=100" | jq -s '[.[][] | {id, digest: .name, tags: .metadata.container.tags}]' > after.json
+          jq -e --argjson id "$TARGET_ID" --arg sha "$TARGET_SHA_TAG" --arg protected "$PROTECTED_DIGEST" '
+            all(.[]; (.id != $id) and ((.tags | index("latest")) == null) and ((.tags | index($sha)) == null)) and
+            ([.[] | select(.digest == $protected and (.tags | index("v0.1.0") != null))] | length) == 1
+          ' after.json >/dev/null
+
+          published_digest="$(docker buildx imagetools inspect "ghcr.io/${GITHUB_REPOSITORY}:v0.1.0" --format '{{.Manifest.Digest}}')"
+          test "$published_digest" = "$PROTECTED_DIGEST"
+          jq -n --arg repository "$GITHUB_REPOSITORY" --argjson id "$TARGET_ID" --arg digest "$TARGET_DIGEST" --arg sha "$TARGET_SHA_TAG" --arg protected "$PROTECTED_DIGEST" --arg result "deleted; verified 404; latest and approved SHA alias absent; v0.1.0 digest preserved" '{repository: $repository, deleted_version_id: $id, deleted_digest: $digest, deleted_tags: ["latest", $sha], protected_v0_1_0_digest: $protected, result: $result}' > cleanup-result.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: ghcr-latest-cleanup-evidence
+          path: |
+            before.json
+            after.json
+            deleted-version-response.txt
+            cleanup-result.json
+          if-no-files-found: ignore
+          retention-days: 7
