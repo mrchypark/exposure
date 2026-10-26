@@ -1,0 +1,110 @@
+# Temporary real IdP only. All resources belong to this disposable namespace.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grant-exposure-auth-test-v020
+  labels:
+    deployment.exposure.io/owner: grant-exposure-auth-test-v020
+    pod-security.kubernetes.io/enforce: restricted
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: goauthy, namespace: grant-exposure-auth-test-v020}
+automountServiceAccountToken: false
+imagePullSecrets: [{name: ghcr-pull}]
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: goauthy-state, namespace: grant-exposure-auth-test-v020}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: standard-rwo
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: goauthy, namespace: grant-exposure-auth-test-v020}
+spec:
+  selector: {app: exposure-test-goauthy}
+  ports: [{name: https, port: 8443, targetPort: https}]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: isolated-auth, namespace: grant-exposure-auth-test-v020}
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: grant-exposure-v020}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: grant-exposure}}
+        - podSelector: {matchLabels: {app: exposure-test-goauthy}}
+      ports: [{protocol: TCP, port: 8443}]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: kube-system}}
+          podSelector: {matchLabels: {k8s-app: kube-dns}}
+      ports: [{protocol: UDP, port: 53}, {protocol: TCP, port: 53}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata: {name: goauthy, namespace: grant-exposure-auth-test-v020}
+spec:
+  replicas: 1
+  serviceName: goauthy
+  selector: {matchLabels: {app: exposure-test-goauthy}}
+  template:
+    metadata: {labels: {app: exposure-test-goauthy, deployment.exposure.io/owner: grant-exposure-auth-test-v020}}
+    spec:
+      serviceAccountName: goauthy
+      automountServiceAccountToken: false
+      nodeSelector: {kubernetes.io/arch: amd64}
+      securityContext: {runAsNonRoot: true, runAsUser: 65532, runAsGroup: 65532, fsGroup: 65532, seccompProfile: {type: RuntimeDefault}}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - {name: state, persistentVolumeClaim: {claimName: goauthy-state}}
+        - {name: tmp, emptyDir: {sizeLimit: 64Mi}}
+        - name: credentials
+          secret:
+            secretName: fixture-credentials
+            defaultMode: 288
+            items:
+              - {key: master-key, path: master-keys/fixture}
+              - {key: oauth-hmac, path: oauth-hmac}
+              - {key: bootstrap-client, path: bootstrap-client}
+              - {key: admin-password-phc, path: password-phc}
+        - {name: tls, secret: {secretName: fixture-tls, defaultMode: 288}}
+      containers:
+        - name: goauthy
+          image: ghcr.io/mrchypark/goauthy@sha256:3b5dd370298faa4af273c876a93142363e1bb78d2cd64d15eed1b3c46848655c
+          ports: [{name: https, containerPort: 8443}]
+          env:
+            - {name: GOAUTHY_LISTEN_ADDR, value: '0.0.0.0:8443'}
+            - {name: GOAUTHY_ISSUER, value: 'https://goauthy.grant-exposure-auth-test-v020.svc.cluster.local:8443'}
+            - {name: GOAUTHY_TLS_CERT_FILE, value: /tls/tls.pem}
+            - {name: GOAUTHY_TLS_KEY_FILE, value: /tls/tls.key}
+            - {name: GOAUTHY_RHIZA_PROFILE, value: standalone}
+            - {name: GOAUTHY_CLUSTER_ID, value: grant-exposure-auth-test-v020}
+            - {name: GOAUTHY_NODE_ID, value: fixture-0}
+            - {name: GOAUTHY_DATA_DIR, value: /state/data}
+            - {name: GOAUTHY_MASTER_KEY_DIR, value: /fixture/master-keys}
+            - {name: GOAUTHY_ACTIVE_MASTER_KEY_ID, value: fixture}
+            - {name: GOAUTHY_OAUTH_HMAC_SECRET_FILE, value: /fixture/oauth-hmac}
+            - {name: GOAUTHY_BOOTSTRAP_CLIENT_ID, value: grant-exposure-v020-test}
+            - {name: GOAUTHY_BOOTSTRAP_CLIENT_SECRET_FILE, value: /fixture/bootstrap-client}
+            - {name: GOAUTHY_BOOTSTRAP_REDIRECT_URI, value: 'http://127.0.0.1:5555/callback'}
+            - {name: GOAUTHY_BOOTSTRAP_ALLOWED_RESOURCES, value: '["https://grant-exposure-v020.test/management"]'}
+            - {name: GOAUTHY_BOOTSTRAP_DEFAULT_AUD, value: 'https://grant-exposure-v020.test/management'}
+            - {name: GOAUTHY_BOOTSTRAP_USER, value: fixture-admin}
+            - {name: GOAUTHY_BOOTSTRAP_USER_SUBJECT, value: grant-exposure-fixture-user}
+            - {name: GOAUTHY_BOOTSTRAP_USER_PASSWORD_PHC_FILE, value: /fixture/password-phc}
+          volumeMounts:
+            - {name: state, mountPath: /state}
+            - {name: tmp, mountPath: /tmp}
+            - {name: credentials, mountPath: /fixture, readOnly: true}
+            - {name: tls, mountPath: /tls, readOnly: true}
+          securityContext: {allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: {drop: [ALL]}}
+          resources: {requests: {cpu: 250m, memory: 512Mi}, limits: {cpu: '1', memory: 1Gi}}
+          startupProbe: {httpGet: {scheme: HTTPS, port: https, path: /livez}, periodSeconds: 5, failureThreshold: 60}
+          readinessProbe: {httpGet: {scheme: HTTPS, port: https, path: /readyz}, periodSeconds: 5}
+          livenessProbe: {httpGet: {scheme: HTTPS, port: https, path: /livez}, periodSeconds: 10}

@@ -1,0 +1,84 @@
+# Fresh namespace only. No existing workload, identity, Secret or data is adopted.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: grant-exposure-v020
+  labels:
+    app.kubernetes.io/part-of: grant-exposure
+    deployment.exposure.io/owner: grant-exposure-v020
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: grant-exposure
+  namespace: grant-exposure-v020
+  labels: {deployment.exposure.io/owner: grant-exposure-v020}
+automountServiceAccountToken: false
+imagePullSecrets:
+  - name: ghcr-pull
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grant-state
+  namespace: grant-exposure-v020
+  labels: {deployment.exposure.io/owner: grant-exposure-v020}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: standard-rwo
+  resources:
+    requests: {storage: 5Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grant
+  namespace: grant-exposure-v020
+  labels: {deployment.exposure.io/owner: grant-exposure-v020}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector: {app.kubernetes.io/name: grant-exposure}
+  ports:
+    - {name: grant, port: 8080, targetPort: grant, protocol: TCP}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: exposure
+  namespace: grant-exposure-v020
+  labels: {deployment.exposure.io/owner: grant-exposure-v020}
+spec:
+  type: ClusterIP
+  selector: {app.kubernetes.io/name: grant-exposure}
+  ports:
+    - {name: exposure, port: 8080, targetPort: exposure, protocol: TCP}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: namespace-only-ingress
+  namespace: grant-exposure-v020
+  labels: {deployment.exposure.io/owner: grant-exposure-v020}
+spec:
+  podSelector: {matchLabels: {app.kubernetes.io/name: grant-exposure}}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: grant-exposure-v020}
+      ports:
+        - {port: 8080, protocol: TCP}
+        - {port: 8082, protocol: TCP}
+        - {port: 8083, protocol: TCP}
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: {kubernetes.io/metadata.name: grant-exposure-auth-test-v020}
+      ports:
+        - {port: 8443, protocol: TCP}
+    # Permit managed and node-local DNS without assuming the DNS Pod/host IP.
+    - ports:
+        - {port: 53, protocol: UDP}
+        - {port: 53, protocol: TCP}
