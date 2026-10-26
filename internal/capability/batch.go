@@ -109,6 +109,9 @@ func validateBatchCatalog(c *catalog) error {
 				return errors.New("invalid batch child reference")
 			}
 			previous = id
+			if cap.OrganizationContext == "optional" && child.OrganizationContext != "optional" {
+				return errors.New("optional organization batch requires optional organization children")
+			}
 			if child.Request.Authorization != cap.Request.Authorization || (child.Method == "DELETE" && child.Request.Body != "none") || (child.Method != "DELETE" && child.Request.Body != "json" && child.Request.Body != "opaque") {
 				return errors.New("incompatible batch child body or authorization")
 			}

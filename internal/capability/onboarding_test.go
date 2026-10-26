@@ -99,26 +99,4 @@ func TestOrglessDoesNotBypassCredentialOrTenantRequirements(t *testing.T) {
 			t.Fatal(tc.path, w.Code, w.Body.String(), calls.Load())
 		}
 	}
-	for _, cap := range cat.Capabilities {
-		if !managementOnboardingCapability("grant-management", cap) {
-			continue
-		}
-		if managementOnboardingCapability("other", cap) {
-			t.Fatal("provider widened")
-		}
-		for name, mutate := range map[string]func(*capability){
-			"method":   func(c *capability) { c.Method = "DELETE" },
-			"path":     func(c *capability) { c.PathTemplate = "/api/v1/providers" },
-			"action":   func(c *capability) { a := "grant-management.admin.provider.create"; c.ActionID = &a },
-			"resource": func(c *capability) { r := *c.Resource; r.Type = "platform"; c.Resource = &r },
-			"auth":     func(c *capability) { c.Request.Authorization = "none" },
-			"body":     func(c *capability) { c.Request.Body = "opaque" },
-		} {
-			copy := cap
-			mutate(&copy)
-			if managementOnboardingCapability("grant-management", copy) {
-				t.Fatal(name)
-			}
-		}
-	}
 }

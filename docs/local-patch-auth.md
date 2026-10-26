@@ -1,8 +1,10 @@
 # patch-auth 로컬 통합 검증
 
-이 작업은 로그인과 데이터 API를 분리한다. 클라이언트는 patch-auth의 PocketBase auth collection에 직접 로그인한다. Exposure는 인스턴스마다 하나의 고정 origin만 사용한다. 데이터용 인스턴스와 Grant 관리용 인스턴스를 나누며, 로그인용 Exposure 인스턴스나 토큰에서 선택하는 issuer 라우팅은 없다.
+This runbook is a named local integration fixture, not a production service contract. Its harness logs into the fixture auth service directly. Production auth services may instead use their own ordinary generic Exposure instance with public_authn capabilities; no service-specific login adapter is required.
 
-권한 집행은 Exposure에서만 수행한다. 관리용 Exposure는 비공개 Grant voter에 직접 판정을 요청하고, 데이터용 Exposure만 patch-data에 인접한 learner에 판정을 요청한다. patch-data는 순정 PocketBase이며 learner를 호출하지 않고 기존 사업 API 요청만 처리한다. API 앞의 내부 권한 검사 노드와 관리용 Rhiza 복제본은 없다. 사용자 bearer는 Grant 판정에만 사용하고 데이터 API에는 기존 서버 소유 서비스 토큰만 전달한다.
+Exposure enforces catalog-bound requests. In this fixture the data instance uses service-token mode, so its user bearer reaches Grant and its server-owned credential reaches the data upstream. In forward-user mode, the user bearer also reaches the configured upstream. Authentication belongs to the configured auth service, not exclusively to Grant.
+
+Public login skips /decide but still requires a pinned, unexpired catalog fetched from Grant. It rejects bearer/cookie/token-query credentials, preserves admitted native statuses and response bytes, and sets Cache-Control: no-store. Run auth and service-token data providers as separate instances with separate origins/catalogs. The existing fixture scripts below do not exercise login through Exposure; auth_upstream_test.go covers that generic path with separate HTTP stubs.
 
 데이터 단위는 **순정 PocketBase + Exposure sidecar + Grant 읽기 복제본**이고, 관리 단위는 **Grant + Exposure sidecar**다. 다른 PocketBase나 다른 시스템에도 같은 Exposure를 사용하며 backend 차이는 capability catalog, 고정 upstream origin, 기존 upstream 인증 설정으로 표현한다. 별도 backend 어댑터나 권한 검사 코드는 추가하지 않는다.
 

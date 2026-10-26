@@ -20,12 +20,12 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: exposure-read-artifacts-patch-data-v1
+  name: exposure-read-artifacts-compos-v2
   namespace: grant-compos-exposure-v1
 immutable: true
 data:
   read-artifacts.json: |
-    [{"artifactType":"exposure.read.v1","exposureId":"customer-profile","exposureVersion":1,"artifactDigest":"sha256:f03f2684ba9cf86c0fb5c3aa915eddd5f3f2523f2df4ea43014205634f854585","source":{"namespace":"wks_default","objectType":"otp_builtin_company_wks_default","schemaDigest":"sha256:ff37152682230e96eee7376ef415e7357d88846ea34bf78bb3555a2630371cf7"},"projectionPointers":["/domain","/employee_count"]},{"artifactType":"exposure.read.v1","exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"sha256:2782d8f92dca0b7a3e507ebad602cb95461c344230511e9cd22b5b39a8cf4ee7","source":{"kind":"patch-data.plant.v1","operation":"plant.get"},"projectionPointers":["/id","/name","/updated"]}]
+    [{"artifactType":"exposure.read.v1","exposureId":"customer-profile","exposureVersion":1,"artifactDigest":"sha256:f03f2684ba9cf86c0fb5c3aa915eddd5f3f2523f2df4ea43014205634f854585","source":{"namespace":"wks_default","objectType":"otp_builtin_company_wks_default","schemaDigest":"sha256:ff37152682230e96eee7376ef415e7357d88846ea34bf78bb3555a2630371cf7"},"projectionPointers":["/domain","/employee_count"]}]
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -99,7 +99,7 @@ spec:
     - name: compos-hiqlite
       persistentVolumeClaim: {claimName: compos-hiqlite}
     - name: exposure-artifacts
-      configMap: {name: exposure-read-artifacts-patch-data-v1}
+      configMap: {name: exposure-read-artifacts-compos-v2}
     - name: grant-hiqlite
       emptyDir: {}
     - name: rauthy-config
@@ -243,9 +243,6 @@ spec:
       env:
         - {name: EXPOSURE_ADDR, value: ":8082"}
         - {name: EXPOSURE_GRANT_LEARNER_URL, value: "http://127.0.0.1:8080"}
-        - {name: EXPOSURE_PATCH_DATA_URL, value: "http://patch-data.patch.svc.cluster.local:8090"}
-        - name: EXPOSURE_PATCH_DATA_SERVICE_TOKEN
-          valueFrom: {secretKeyRef: {name: exposure-stage-a-secrets, key: __REQUIRED_EXPOSURE_PATCH_DATA_SERVICE_TOKEN_SECRET_KEY__}}
         - {name: EXPOSURE_READ_ARTIFACTS_FILE, value: /var/run/exposure-artifacts/read-artifacts.json}
         - name: EXPOSURE_GRANT_APP_AUTH_KEY
           valueFrom: {secretKeyRef: {name: exposure-stage-a-secrets, key: __REQUIRED_EXPOSURE_GRANT_APP_AUTH_KEY_SECRET_KEY__}}

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/mrchypark/exposure/internal/contracts"
-	"github.com/mrchypark/exposure/internal/operation"
 	"github.com/mrchypark/exposure/internal/readartifact"
 	"github.com/mrchypark/exposure/internal/readiness"
 	"github.com/mrchypark/exposure/internal/service"
@@ -23,12 +22,6 @@ type pg struct{ n *int }
 func (g pg) Read(_ context.Context, q contracts.ReadGrantRequest, _, _, _ string) (contracts.ReadGrantResponse, error) {
 	(*g.n)++
 	response := contracts.ReadGrantResponse{Allowed: true, Reason: "ok", ExposureID: q.ExposureID, ExposureVersion: q.ExposureVersion, ArtifactDigest: q.ArtifactDigest, ResourceID: q.ResourceID, RequestBinding: q.RequestBinding, PrincipalDigest: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", IssuedAt: time.Now().Add(-time.Minute), ExpiresAt: time.Now().Add(time.Minute)}
-	if descriptor, ok := operation.Lookup(q.OperationID); ok {
-		response.OperationID = descriptor.ID
-		response.ProviderID = descriptor.ProviderID
-		response.ActionID = descriptor.ActionID
-		response.ResourceType = descriptor.ResourceType
-	}
 	return response, nil
 }
 
@@ -40,15 +33,6 @@ func (s ps) ReadObject(_ context.Context, a readartifact.Artifact, resourceID st
 	return contracts.SourceObject{Kind: a.SourceKind(), ResourceID: resourceID, ResourceVersion: &version, RawResource: map[string]any{"x": "safe"}}, nil
 }
 
-type patchPS struct{ n *int }
-
-func (s patchPS) ReadObject(_ context.Context, a readartifact.Artifact, resourceID string) (contracts.SourceObject, error) {
-	(*s.n)++
-	return contracts.SourceObject{
-		Kind: a.SourceKind(), ResourceID: resourceID, SourceRevision: "2026-08-11 01:02:03.456Z",
-		RawResource: map[string]any{"id": resourceID, "name": "Gwangdeok", "updated": "2026-08-11 01:02:03.456Z"},
-	}, nil
-}
 func readAPI(t *testing.T) (*API, *int, *int) {
 	t.Helper()
 	schema := "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -65,24 +49,6 @@ func readAPI(t *testing.T) (*API, *int, *int) {
 	return New(svc, readiness.New(), 1024, 1), &g, &s
 }
 
-func readPatchAPI(t *testing.T) (*API, *int, *int) {
-	t.Helper()
-	source := map[string]any{"kind": "patch-data.plant.v1", "operation": "plant.get"}
-	d, err := contracts.Digest(map[string]any{"artifactType": "exposure.read.v1", "exposureId": "patch-data-plant-profile", "exposureVersion": float64(1), "source": source, "projectionPointers": []string{"/id", "/name", "/updated"}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	a, err := readartifact.Parse([]byte(fmt.Sprintf(`{"artifactType":"exposure.read.v1","exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"%s","source":{"kind":"patch-data.plant.v1","operation":"plant.get"},"projectionPointers":["/id","/name","/updated"]}`, d)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	g, s := 0, 0
-	svc, err := service.New([]readartifact.Artifact{a}, pg{&g}, patchPS{&s}, "app")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return New(svc, readiness.New(), 4096, 1), &g, &s
-}
 func TestOnlyReadRoutesReachable(t *testing.T) {
 	a, g, s := readAPI(t)
 	for _, path := range []string{"/metrics", "/api/v1/orgs/x", "/v1/operations", "/v1/resources:page"} {
@@ -98,33 +64,6 @@ func TestOnlyReadRoutesReachable(t *testing.T) {
 	var response service.ReadResponse
 	if err := json.Unmarshal(w.Body.Bytes(), &response); err != nil || w.Code != http.StatusOK || *g != 1 || *s != 1 || response.ExposureID != "exp" || response.ResourceID != "r" || response.ResourceVersion == nil || *response.ResourceVersion != 0 || len(response.Data) != 1 || response.Data["x"] != "safe" || strings.Contains(w.Body.String(), "rawResource") {
 		t.Fatal(w.Code, w.Body.String(), *g, *s)
-	}
-}
-
-func TestPatchDataPublicResponseUsesSourceRevisionAndFrozenProjection(t *testing.T) {
-	a, grant, source := readPatchAPI(t)
-	request := httptest.NewRequest(http.MethodGet, "/v1/exposures/patch-data-plant-profile/resources/4n5mdid6ccx1bh6", nil)
-	request.Header.Set("Authorization", "Bearer token")
-	request.Header.Set("X-Organization-ID", "org")
-	response := httptest.NewRecorder()
-	a.Handler().ServeHTTP(response, request)
-	want := `{"exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"sha256:2782d8f92dca0b7a3e507ebad602cb95461c344230511e9cd22b5b39a8cf4ee7","resourceId":"4n5mdid6ccx1bh6","sourceRevision":"2026-08-11 01:02:03.456Z","data":{"id":"4n5mdid6ccx1bh6","name":"Gwangdeok","updated":"2026-08-11 01:02:03.456Z"}}`
-	if response.Code != http.StatusOK || response.Body.String() != want || *grant != 1 || *source != 1 || strings.Contains(response.Body.String(), "resourceVersion") {
-		t.Fatalf("status=%d body=%q grant=%d source=%d", response.Code, response.Body.String(), *grant, *source)
-	}
-}
-
-func TestPatchDataInvalidResourceIDStopsBeforeGrant(t *testing.T) {
-	for _, resourceID := range []string{"short", "4N5MDID6CCX1BH6", "aaaaaaaaaaaaaaaa"} {
-		a, grant, source := readPatchAPI(t)
-		request := httptest.NewRequest(http.MethodGet, "/v1/exposures/patch-data-plant-profile/resources/"+resourceID, nil)
-		request.Header.Set("Authorization", "Bearer token")
-		request.Header.Set("X-Organization-ID", "org")
-		response := httptest.NewRecorder()
-		a.Handler().ServeHTTP(response, request)
-		if response.Code != http.StatusUnprocessableEntity || *grant != 0 || *source != 0 || strings.Contains(response.Body.String(), resourceID) {
-			t.Fatalf("resource=%q status=%d body=%q grant=%d source=%d", resourceID, response.Code, response.Body.String(), *grant, *source)
-		}
 	}
 }
 

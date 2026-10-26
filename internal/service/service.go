@@ -39,7 +39,6 @@ type ReadResponse struct {
 	ArtifactDigest  string         `json:"artifactDigest"`
 	ResourceID      string         `json:"resourceId"`
 	ResourceVersion *int64         `json:"resourceVersion,omitempty"`
-	SourceRevision  string         `json:"sourceRevision,omitempty"`
 	Data            map[string]any `json:"data"`
 }
 
@@ -84,9 +83,6 @@ func (s *Service) Read(ctx context.Context, input ReadRequest) (ReadResponse, er
 		ExposureID: artifact.ExposureID(), ExposureVersion: artifact.ExposureVersion(),
 		ArtifactDigest: artifact.ArtifactDigest(), ResourceID: input.ResourceID, RequestBinding: binding,
 	}
-	if descriptor, ok := artifact.Operation(); ok {
-		request.OperationID = descriptor.ID
-	}
 	decision, err := s.grant.Read(ctx, request, input.Authorization, input.OrganizationID, s.appKey)
 	if err != nil {
 		return ReadResponse{}, mapDependencyError(err)
@@ -121,7 +117,7 @@ func (s *Service) Read(ctx context.Context, input ReadRequest) (ReadResponse, er
 	return ReadResponse{
 		ExposureID: artifact.ExposureID(), ExposureVersion: artifact.ExposureVersion(),
 		ArtifactDigest: artifact.ArtifactDigest(), ResourceID: object.ResourceID,
-		ResourceVersion: object.ResourceVersion, SourceRevision: object.SourceRevision, Data: data,
+		ResourceVersion: object.ResourceVersion, Data: data,
 	}, nil
 }
 

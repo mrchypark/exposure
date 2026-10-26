@@ -57,7 +57,8 @@
           503
         ]
       },
-      "contractDigest": "sha256:9f9c9f411ccd01ed4a7565f312e95cf12e6c957b741ecef9b5f85ec00db2068a"
+      "contractDigest": "sha256:877bfc52e230f95673d4b7b856b1b85207109eb66ccac571f4622c00b35f9a75",
+      "organizationContext": "optional"
     },
     {
       "capabilityId": "management.user.materialize.1",
@@ -105,7 +106,8 @@
           503
         ]
       },
-      "contractDigest": "sha256:529af42d1cec65f232281a8df0ebf98abbf6c240d3d891521486da70f35e53d7"
+      "contractDigest": "sha256:8d6cccdf1230298cb08116b2e3c036ef65ed3dbcfff7927f568775c66f10fe1a",
+      "organizationContext": "optional"
     },
     {
       "capabilityId": "management.provider.list.2",
@@ -217,7 +219,8 @@
           503
         ]
       },
-      "contractDigest": "sha256:b2fe51e48d38c5136262e28738555d2d069a6e8e55c2cf1d2720ae2498cfde08"
+      "contractDigest": "sha256:60e26417d704d4e5fcd300b3f94522580936fdda92cd95ad5df0234bda99f40c",
+      "organizationContext": "optional"
     },
     {
       "capabilityId": "management.organization.create.4",
@@ -269,7 +272,8 @@
           503
         ]
       },
-      "contractDigest": "sha256:b0cc2fa7e55d88bfa4bd6d5cfef858d697f118f5d301de4db99652d03c26610a"
+      "contractDigest": "sha256:6f24f7f1f922199153fb0ff6405ace51b814306884a962c47180f314e476dce7",
+      "organizationContext": "optional"
     },
     {
       "capabilityId": "management.organization.owner.read.5",
@@ -3664,5 +3668,5 @@
       "contractDigest": "sha256:b2b3184f6906d2caa6c3c342a1a0a543d099c109d73e8ea673774a973ef88471"
     }
   ],
-  "catalogDigest": "sha256:79cca38c10114d88570bc062b4d7f419bb167ffbfde8125ac21e06432742f1cb"
+  "catalogDigest": "sha256:9b027183444f9cd2af2d115c6165f5f4e75284f0f463b9432487854b17f2adf4"
 }

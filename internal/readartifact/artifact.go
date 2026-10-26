@@ -7,22 +7,15 @@ import (
 	"fmt"
 	"io"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/mrchypark/exposure/internal/contracts"
-	"github.com/mrchypark/exposure/internal/operation"
 )
 
 const (
-	artifactType         = "exposure.read.v1"
-	SourceComposObject   = "compos.object.v1"
-	SourcePatchDataPlant = "patch-data.plant.v1"
-	patchDataExposureID  = "patch-data-plant-profile"
-	patchDataOperation   = operation.PlantGetID
+	artifactType       = "exposure.read.v1"
+	SourceComposObject = "compos.object.v1"
 )
-
-var patchDataResourceID = regexp.MustCompile(`^[a-z0-9]{15}$`)
 
 // Artifact is an immutable, closed V1 read projection artifact.
 type Artifact struct {
@@ -32,7 +25,6 @@ type Artifact struct {
 	artifactDigest     string
 	sourceKind         string
 	composSource       composSource
-	patchDataSource    patchDataSource
 	projectionPointers []string
 }
 
@@ -40,11 +32,6 @@ type composSource struct {
 	Namespace    string `json:"namespace"`
 	ObjectType   string `json:"objectType"`
 	SchemaDigest string `json:"schemaDigest"`
-}
-
-type patchDataSource struct {
-	Kind      string `json:"kind"`
-	Operation string `json:"operation"`
 }
 
 type artifactWire struct {
@@ -83,17 +70,7 @@ func Parse(data []byte) (Artifact, error) {
 		exposureVersion: wire.ExposureVersion, artifactDigest: wire.ArtifactDigest,
 		projectionPointers: append([]string(nil), wire.ProjectionPointers...),
 	}
-	if _, tagged := sourceFields["kind"]; tagged {
-		if err := contracts.StrictDecode(wire.Source, &a.patchDataSource); err != nil {
-			return Artifact{}, err
-		}
-		for _, name := range []string{"kind", "operation"} {
-			if _, ok := sourceFields[name]; !ok {
-				return Artifact{}, fmt.Errorf("%w: missing source %s", contracts.ErrContract, name)
-			}
-		}
-		a.sourceKind = a.patchDataSource.Kind
-	} else {
+	{
 		if err := contracts.StrictDecode(wire.Source, &a.composSource); err != nil {
 			return Artifact{}, err
 		}
@@ -119,10 +96,6 @@ func (a Artifact) Validate() error {
 		if a.composSource.Namespace == "" || a.composSource.ObjectType == "" || !contracts.IsDigest(a.composSource.SchemaDigest) {
 			return fmt.Errorf("%w: invalid Compos source", contracts.ErrContract)
 		}
-	case SourcePatchDataPlant:
-		if a.exposureID != patchDataExposureID || a.patchDataSource.Kind != SourcePatchDataPlant || a.patchDataSource.Operation != patchDataOperation || !reflect.DeepEqual(a.projectionPointers, []string{"/id", "/name", "/updated"}) {
-			return fmt.Errorf("%w: invalid Patch Data plant source", contracts.ErrContract)
-		}
 	default:
 		return fmt.Errorf("%w: unsupported read source", contracts.ErrContract)
 	}
@@ -138,9 +111,6 @@ func (a Artifact) Validate() error {
 
 func (a Artifact) digestInput() any {
 	var source any = a.composSource
-	if a.sourceKind == SourcePatchDataPlant {
-		source = a.patchDataSource
-	}
 	return struct {
 		ArtifactType       string   `json:"artifactType"`
 		ExposureID         string   `json:"exposureId"`
@@ -158,24 +128,8 @@ func (a Artifact) Namespace() string      { return a.composSource.Namespace }
 func (a Artifact) ObjectType() string     { return a.composSource.ObjectType }
 func (a Artifact) SchemaDigest() string   { return a.composSource.SchemaDigest }
 
-// Operation returns the immutable server-owned operation descriptor for
-// operation-backed artifacts. Legacy Compos reads have no operation descriptor.
-func (a Artifact) Operation() (operation.Descriptor, bool) {
-	if a.sourceKind != SourcePatchDataPlant {
-		return operation.Descriptor{}, false
-	}
-	return operation.Lookup(a.patchDataSource.Operation)
-}
-
 func (a Artifact) ValidResourceID(resourceID string) bool {
-	if a.sourceKind == SourcePatchDataPlant {
-		return ValidPatchDataResourceID(resourceID)
-	}
 	return resourceID != "" && !strings.ContainsAny(resourceID, "/\\?#")
-}
-
-func ValidPatchDataResourceID(resourceID string) bool {
-	return patchDataResourceID.MatchString(resourceID)
 }
 
 func (a Artifact) ValidateSourceObject(object contracts.SourceObject) error {
@@ -184,12 +138,8 @@ func (a Artifact) ValidateSourceObject(object contracts.SourceObject) error {
 	}
 	switch a.sourceKind {
 	case SourceComposObject:
-		if object.ResourceVersion == nil || *object.ResourceVersion < 0 || object.SourceRevision != "" {
+		if object.ResourceVersion == nil || *object.ResourceVersion < 0 {
 			return fmt.Errorf("%w: invalid Compos revision", contracts.ErrContract)
-		}
-	case SourcePatchDataPlant:
-		if object.ResourceVersion != nil || object.SourceRevision == "" {
-			return fmt.Errorf("%w: invalid Patch Data revision", contracts.ErrContract)
 		}
 	}
 	return nil

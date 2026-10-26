@@ -7,27 +7,13 @@ Service. The bundle owns one `HTTPRoute` attachment for
 `kubectl port-forward`. Do not apply this template without a separate explicit
 START authorization.
 
-The immutable artifact collection contains both the backwards-compatible
-Compos `customer-profile` artifact and the Patch Data
-`patch-data-plant-profile` artifact. Patch Data is reached only at the fixed
-cluster-local origin `http://patch-data.patch.svc.cluster.local:8090`; Exposure
-always uses `GET /api/internal/exposure/v1/plants/{15-lowercase-alphanumeric-id}`
-with no query or request body
-and authenticates with a dedicated server-owned Patch Data service token loaded
-from `exposure-stage-a-secrets`. The caller bearer reaches Grant only and is not
-available to the Patch Data client. The artifact can expose only `id`, `name`,
-and `updated`.
-The Secret-key placeholder is wiring, not proof of authorization. Do not render
-or apply this Patch Data artifact until Patch Data owns an exact non-superuser
-service principal for only this private route, with integrated allow/deny
-evidence.
-Before acceptance, the deployment owner must prove that Service
-`patch/patch-data` is not `ExternalName` and that its ready endpoints belong to
-the intended Patch Data workload; exact DNS is necessary but does not establish
-Service ownership by itself.
-The immutable ConfigMap is versioned as
-`exposure-read-artifacts-patch-data-v1`; the Pod references that exact name so
-an existing immutable artifact collection is never updated in place.
+The immutable artifact collection contains only the legacy Compos
+`customer-profile` projection. Its ConfigMap is versioned as
+`exposure-read-artifacts-compos-v2`; the Pod references that exact name so an
+existing immutable artifact collection is never updated in place. There is no
+service-specific data adapter or data-service token in this template. Other
+upstreams, including authentication services, use separate generic capability
+proxy instances; see the repository README.
 
 ## Controlled replacement
 

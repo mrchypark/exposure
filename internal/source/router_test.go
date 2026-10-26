@@ -16,28 +16,12 @@ func (f *composFake) ReadObject(_ context.Context, request contracts.SourceReadR
 	return contracts.SourceReadResponse{Namespace: request.Namespace, ObjectType: request.ObjectType, SchemaDigest: request.SchemaDigest, ResourceID: request.ResourceID, ResourceVersion: 2, RawResource: map[string]any{"x": "y"}}, nil
 }
 
-type patchFake struct{ calls int }
-
-func (f *patchFake) ReadPlant(_ context.Context, resourceID string) (contracts.SourceObject, error) {
-	f.calls++
-	return contracts.SourceObject{Kind: readartifact.SourcePatchDataPlant, ResourceID: resourceID, SourceRevision: "revision", RawResource: map[string]any{"id": resourceID}}, nil
-}
-
 func TestRouterDoesNotForwardBearerToCompos(t *testing.T) {
 	artifact := parseArtifact(t, composArtifact(t))
-	compos, patch := &composFake{}, &patchFake{}
-	out, err := New(compos, patch).ReadObject(context.Background(), artifact, "resource")
-	if err != nil || compos.request.ResourceID != "resource" || patch.calls != 0 || out.ResourceVersion == nil || *out.ResourceVersion != 2 {
-		t.Fatalf("out=%#v compos=%#v patch=%#v err=%v", out, compos, patch, err)
-	}
-}
-
-func TestRouterNeverForwardsUserBearerToPatchData(t *testing.T) {
-	artifact := parseArtifact(t, patchArtifact(t))
-	compos, patch := &composFake{}, &patchFake{}
-	out, err := New(compos, patch).ReadObject(context.Background(), artifact, "4n5mdid6ccx1bh6")
-	if err != nil || patch.calls != 1 || compos.request.ResourceID != "" || out.SourceRevision != "revision" {
-		t.Fatalf("out=%#v compos=%#v patch=%#v err=%v", out, compos, patch, err)
+	compos := &composFake{}
+	out, err := New(compos).ReadObject(context.Background(), artifact, "resource")
+	if err != nil || compos.request.ResourceID != "resource" || out.ResourceVersion == nil || *out.ResourceVersion != 2 {
+		t.Fatalf("out=%#v compos=%#v err=%v", out, compos, err)
 	}
 }
 
@@ -53,11 +37,6 @@ func parseArtifact(t *testing.T, body []byte) readartifact.Artifact {
 func composArtifact(t *testing.T) []byte {
 	source := map[string]any{"namespace": "n", "objectType": "o", "schemaDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 	return artifactJSON(t, "exp", source, []string{"/x"})
-}
-
-func patchArtifact(t *testing.T) []byte {
-	source := map[string]any{"kind": readartifact.SourcePatchDataPlant, "operation": "plant.get"}
-	return artifactJSON(t, "patch-data-plant-profile", source, []string{"/id", "/name", "/updated"})
 }
 
 func artifactJSON(t *testing.T, exposureID string, source map[string]any, pointers []string) []byte {

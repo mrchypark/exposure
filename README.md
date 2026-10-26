@@ -1,172 +1,156 @@
 # Exposure
 
-The current HTTP capability mode forwards only routes in a pinned Grant catalog.
-The Grant management fixture contains 69 capabilities, including organization
-and application lifecycle management and authenticated self-onboarding. See
-[Grant management](docs/grant-management.md) for the registration, permission
-and rollout contract. Four exact onboarding routes can omit the organization
-header while still requiring Bearer authentication and Grant authorization;
-ordinary organization routes cannot. This source update does not establish a
-live IED rollout.
+Exposure is a fail-closed HTTP policy-enforcement point. In capability mode it
+proxies one configured upstream origin using a pinned, versioned Grant catalog.
+Business data, authentication services, and management APIs use the same catalog
+plumbing; no service-specific data adapter or compiled plant operation exists.
+
+## Authentication and authorization
+
+| Capability | Request flow |
+|---|---|
+| `public_authn` | Credential-free, rate-limited request to the configured auth upstream; no per-request Grant decision. The upstream authenticates the user and issues its native response/token. |
+| `authorized`, `forward-user` | Grant validates the identity and authorizes the bound request; Exposure forwards the user's bearer to the configured upstream. |
+| `authorized`, `service-token` | Grant validates the user's identity and authorizes the bound request; Exposure replaces the upstream Authorization value with its server-owned credential. |
+
+Authentication is not exclusively obtained from Grant. `CredentialMode`
+(`rauthy`, `pocketbase`, `goauthy`) describes how Exposure extracts untrusted
+identity hints for Grant; parsing a JWT is not signature verification. Grant
+remains the authorization authority and validates the supplied identity before
+allowing protected requests.
+
+Auth upstreams are ordinary providers. Their `public_authn` routes are explicitly
+registered method/path contracts with bounded query/body/response policies and
+allowlisted headers/statuses. Bodies and admitted native statuses are preserved.
+These routes reject Authorization, Cookie, alternate credentials and token query
+parameters; this is not a general OAuth/browser-session proxy. All login and
+protected responses are `Cache-Control: no-store`, including native errors.
+
+Login skips `/decide`, **not the catalog control plane**: Exposure must fetch and
+verify a pinned, unexpired catalog from Grant before serving any capability.
+An expired or missing catalog fails closed. Each instance has one fixed origin;
+clients and JWT issuer claims cannot choose it.
+
+A `service-token` instance cannot enable `public_authn`. Use separate instances
+for an auth service and a privileged data service, each with its own origin,
+provider/PEP identity, catalog digest, listeners and deployment credentials. A
+`forward-user` provider may expose both credential-free login and protected APIs
+when its reviewed catalog permits them. Do not change upstream auth collections
+or add private business endpoints to satisfy Exposure.
+
+### Organization context
+
+Protected capabilities require a Bearer credential and, by default, one nonempty
+`X-Organization-ID`. A capability can explicitly set
+`organizationContext: "optional"` to allow an absent organization header while
+still requiring the full bound Grant decision. This is provider-independent:
+Exposure has no provider/action/path whitelist. A supplied organization is never
+silently stripped; it goes to the PDP and is forwarded upstream only when the
+catalog header allowlist permits it. Empty or duplicate headers are rejected.
+
+Omitting the policy means `required` and preserves old digests. Explicit policies
+are digest-bound and valid only for `authorized` capabilities. Management fixture
+onboarding routes now opt in as catalog data. Existing publishers must implement
+the [organization-context producer contract](docs/organization-context.md)
+before those new catalogs can be deployed; old catalogs no longer receive a
+hidden management exception.
+
+## Capability configuration
+
+Set `EXPOSURE_PROXY_ENABLED=true` and supply:
+
+- `EXPOSURE_GRANT_LEARNER_URL`: fixed Grant protocol HTTP(S) origin.
+- `EXPOSURE_PROVIDER_ID`, `EXPOSURE_PEP_CLIENT_ID`: registered identities.
+- `EXPOSURE_PROVIDER_ORIGIN`: fixed provider HTTP(S) origin.
+- `EXPOSURE_EXPECTED_CATALOG_DIGEST`: reviewed active catalog digest.
+- `EXPOSURE_GRANT_APP_AUTH_KEY`, `EXPOSURE_AUTHN_LIMITER_KEY`: server secrets.
+- `EXPOSURE_PROVIDER_AUTHORIZATION_MODE`: `forward-user` or `service-token`.
+- `EXPOSURE_PROVIDER_TOKEN_FILE`: private file containing the complete raw
+  upstream Authorization value, required only for `service-token` mode.
+
+Both origins use the same neutral validator. Operations configuration selects
+their complete address, scheme and port at startup; no service name, Kubernetes
+suffix, network range or service-specific port is required. Canonical lowercase
+DNS names (including single-label Docker service names), IPv4 and bracketed IPv6
+are accepted. Ports may be omitted or explicitly set to decimal 1–65535 without
+leading zeroes. Credentials, paths (even `/`), queries, fragments and noncanonical
+host spellings are rejected. Request headers, paths and catalog entries cannot
+override either configured origin.
+
+`https://` retains normal certificate trust and DNS/IP identity verification.
+`http://` explicitly opts into plaintext transport; no additional flag is needed.
+Deployment owners control endpoint ownership, trust roots and network access.
+DNS alone does not establish endpoint ownership. Runtime clients ignore proxy
+environment variables and never follow redirects, including cross-origin or
+HTTPS-to-HTTP redirects. Forwarding headers are not trusted identity or routing
+input. Exposure's own listener remains plain HTTP; outbound HTTPS does not change
+that separate ingress contract.
+
+Exposure intentionally depends on Grant's catalog and PDP protocol. Grant is the
+authority for business allow/deny decisions; Exposure validates the transport,
+catalog, request and decision bindings and enforces the result. This dependency
+does not create service, provider, path or action exceptions: every `authorized`
+capability uses the same Grant checks. `public_authn` is an explicit catalog
+protocol mode, not a service-name exception. See the
+[organization-context contract](docs/organization-context.md) for optional context
+and deployment compatibility requirements.
+
+See [generic auth configuration](deploy/generic-auth.env.example),
+[internal provider scope](docs/internal-provider-scope.md), and the
+[local integration fixture](docs/local-patch-auth.md). The latter uses named
+services as test data, not built-in routing or production prerequisites.
+
+`EXPOSURE_DATA_ADDR` and `EXPOSURE_ADMIN_ADDR` must differ. Size, timeout and
+concurrency limits have fail-closed defaults in `internal/config`.
+`EXPOSURE_PUBLIC_AUTHN_GLOBAL_*` and `EXPOSURE_PUBLIC_AUTHN_PEER_*` token buckets
+are per-process, not cluster-wide quotas. Peer entries expire after one hour;
+the bounded 4,096-entry map evicts its deterministic least-recently-used entry.
 
 ## Legacy simple-read mode
 
-The following describes the separate legacy artifact-based read mode, not the
-capability mode used by management Exposure.
-
-Exposure is a stateless, fail-closed HTTP policy-enforcement point for one
-immutable, server-owned read projection. This release exposes exactly:
+With capability mode disabled, the separate legacy mode serves only:
 
 - `GET /healthz`
 - `GET /readyz`
 - `GET /v1/exposures/{exposureId}/resources/{resourceId}`
 
-The protected read requires exactly one `Authorization: Bearer …` header and
-one `X-Organization-ID` header. Callers cannot supply selectors, projection
-pointers, or the server-owned Grant application key. Exposure creates a fresh
-request binding, obtains a tuple-bound unexpired Grant decision, reads the fixed
-object from either private Compos or the fixed internal Patch Data plant record
-operation, and returns only scalar leaves named by the startup artifact. The
-user bearer is sent only to Grant. After Grant allows the exact tuple, Exposure
-authenticates the fixed PocketBase request with a separate server-owned Patch
-Data service token; the user bearer can never reach the Patch Data client API.
-Dependency responses and public responses
-are bounded; redirects and environment proxies are disabled. Exposure does not
-interpret `Forwarded` or `X-Forwarded-*` headers.
+It reads Compos at fixed `http://127.0.0.1:7878` after a bound Grant decision,
+and returns only scalar leaves from the immutable startup projection. It
+requires `EXPOSURE_GRANT_LEARNER_URL`, `EXPOSURE_READ_ARTIFACTS_FILE`, and
+`EXPOSURE_GRANT_APP_AUTH_KEY`. Its user bearer goes to Grant, not Compos. This
+legacy behavior is not a rule for generic upstream authentication.
 
-In this legacy mode, operations, pages, management, metrics, actions, arbitrary selectors, write APIs,
-field masks/ACLs, receipts, and hot reload are unsupported. Their routes are not
-registered and return `404`.
+The service-specific plant artifact, operation registry, data client, URL/token
+configuration and authority-snapshot run-validator have been removed. Old
+service-specific artifacts are rejected at startup; migrate them to reviewed
+generic HTTP catalogs, not renamed artifacts. The Stage A legacy template now
+contains only its Compos projection and a new immutable ConfigMap name.
 
-## Authentication and dependency errors
+Legacy missing/malformed bearer errors return `401` before dependencies. The
+legacy parser accepts case-insensitive Bearer and ASCII spaces with RFC 6750
+token syntax; the capability parser retains its stricter JWT transport contract.
+Legacy Grant errors map only bounded status, never upstream error text. Successful
+decisions must match the strict artifact/resource/request binding and expiry.
+`artifactDigest` is `sha256:` plus 64 lowercase hex characters;
+`principalDigest` is 64 lowercase hex characters without a prefix.
 
-Missing or malformed bearer authentication returns the bounded public `401`
-error envelope before any dependency call. Every public `401`, including a
-Grant-originated `401`, contains exactly the generic challenge
-`WWW-Authenticate: Bearer`; it never includes `error`, `error_description`, or
-upstream detail. The scheme is case-insensitive and accepts one or more ASCII
-spaces before an RFC 6750 `b64token`, while tabs, control characters, combined
-credentials, empty/padding-only tokens, and misplaced padding are rejected.
-Grant non-success bodies are not a
-public or stable schema: Exposure closes them without parsing or echoing and
-maps only the bounded HTTP status (`401` to public `401`, `403` to public `403`, `503` and
-other upstream failures to public `503`; Grant `400`/`422` remain public `422`).
-No Grant error text is echoed. A successful Grant `200` must still satisfy the
-complete strict decision schema, while the normal policy decision
-`200 {"allowed":false,...}` remains a public `403`. This preserves useful,
-fail-closed status semantics for invalid/expired identities, organization or
-application denial, and Patch Data authentication dependency failure without
-coupling Exposure to Grant's legacy `{ "error": ... }` body.
+## Deployment and verification
 
-The strict Grant decision wire follows Grant's canonical formats:
-`artifactDigest` is `sha256:` plus 64 lowercase hexadecimal characters, while
-`principalDigest` is exactly 64 lowercase hexadecimal characters with no
-prefix. The two fields are distinct contracts; Exposure rejects prefixed,
-uppercase, non-hexadecimal, or wrong-length principal digests.
+Exposure serves internal plain HTTP. The pre-existing Gateway owns public TLS;
+the Stage A bundle attaches only an HTTPRoute and manages no Gateway, Ingress,
+certificate or key. Templates are render-only with unresolved required inputs.
+No live deployment is established by local tests. See
+[Stage A notes](deploy/stage-a-dev/README.md) and
+[reuse provenance](docs/release-provenance.md).
 
-## Configuration
-
-Required environment variables:
-
-- `EXPOSURE_GRANT_LEARNER_URL`: canonical internal Grant HTTP origin.
-- `EXPOSURE_PATCH_DATA_URL`: canonical internal Patch Data HTTP origin.
-- `EXPOSURE_READ_ARTIFACTS_FILE`: immutable startup JSON artifact collection.
-- `EXPOSURE_GRANT_APP_AUTH_KEY`: server-owned Grant credential.
-
-The two dependency origins are always required and fail startup unless they are
-exactly `http://grant.<namespace>.svc.cluster.local:8080` and
-`http://patch-data.<namespace>.svc.cluster.local:8090`, where `namespace` is one
-canonical lowercase DNS label. Literal loopback IP origins with those exact
-ports are accepted only to support local tests. HTTPS, public or bare hosts,
-other Service names, private or metadata IPs, alternate ports, credentials,
-paths (including encoded paths), queries, fragments, wildcards, and
-noncanonical DNS/case are rejected. The configured Patch Data origin is passed
-unchanged to its fixed-operation client; no alternate or hardcoded backend is
-used.
-
-`EXPOSURE_PATCH_DATA_SERVICE_TOKEN` is also required for those artifacts. It is
-the raw token of a dedicated least-privilege Patch Data service identity and
-must be injected from a Secret; do not include the `Bearer` prefix. Exposure
-uses it only as the backend `Authorization` bearer and never logs it, returns
-it, or substitutes the caller's user bearer. An invalid or absent token fails
-startup, while Patch Data `401`/`403` responses fail closed.
-
-This repository does not create that Patch Data principal or authorize generic
-PocketBase collections. Patch Data owns the enabled service-principal identity
-and permits it only on the private fixed-operation route. A superuser or other
-ACL-bypass token is not an acceptable substitute.
-Loopback origins exist only behind the package-private test helper. The Patch
-Data source is a closed operation: `patch-data-plant-profile`, `plant.get`,
-private route `GET /api/internal/exposure/v1/plants/{plantId}`, and projection
-`/id`, `/name`, `/updated` are fixed in code. Callers cannot
-select a host, path, collection, query, schema, field list, or projection. The
-backend request has no body or query and cannot name a PocketBase collection.
-
-Compos artifacts retain their original untagged source shape and exact public
-`resourceVersion` response. Patch Data responses instead carry the PocketBase
-`updated` value as opaque `sourceRevision`; they do not invent an integer
-resource version. Missing records become a read conflict, PocketBase ACL denial
-remains forbidden, and timeout, redirect, malformed, oversized, or upstream
-failures are fail-closed dependency failures. No PocketBase metadata,
-organization relation, permission relation, collection metadata, or other
-unapproved field is returned.
-
-The `plant.get` descriptor fixes Grant's policy tuple to provider `patch-data`,
-action `patch-data.plant.read`, resource type `plant`, and the exact plant ID.
-The caller supplies none of those policy selectors. Grant echoes the registered
-operation and exact policy tuple, and Exposure validates them with the artifact
-and replay binding before executing the fixed backend request.
-
-See [Patch Data fixed-operation boundary](docs/patch-data-operations.md) for
-the initial operation and explicitly deferred list/search families.
-See [internal provider scope](docs/internal-provider-scope.md) for current
-internal K8s provider support and deferred external integration.
-
-Exact DNS does not by itself prevent a Kubernetes owner from replacing the
-Service with an `ExternalName`. The Deploy acceptance contract must therefore
-verify that `patch/patch-data` is the intended non-ExternalName Service with the
-expected selector/endpoints before exposing traffic. Exposure never accepts an
-alternate origin as a workaround.
-
-The Compos origin is intentionally fixed at `http://127.0.0.1:7878`. The Patch
-Data private operation path is likewise fixed in the dedicated client. Optional
-timeout and size/concurrency settings retain fail-closed defaults in
-`internal/config`.
-
-### HTTP capability proxy mode
-
-When `EXPOSURE_PROXY_ENABLED=true`, Exposure instead serves the active Grant
-HTTP capability catalog for one configured provider and fixed internal origin.
-For PocketBase authentication and a separately protected Patch Data upstream,
-see the [local patch-auth integration runbook](docs/local-patch-auth.md).
-`EXPOSURE_PUBLIC_AUTHN_GLOBAL_*` and `EXPOSURE_PUBLIC_AUTHN_PEER_*` are
-**per-process-instance** token buckets. They bound one Exposure process only;
-the effective deployment total scales with replicas. This mode intentionally
-does not add a shared limiter or claim a cluster-wide quota. A deployment that
-needs a global quota must supply and review that separate boundary.
-Peer entries are pruned after one hour of inactivity and the bounded 4,096-entry
-map evicts its deterministic least-recently-used entry before admitting a new
-peer.
-
-## HTTP migration boundary
-
-Exposure now serves plain internal HTTP only. Direct Exposure TLS compatibility
-is intentionally broken: the former Exposure-held certificate/key configuration
-has been removed and is no longer an active runtime or deployment contract.
-
-The pre-existing Gateway `haproxy-gateway-system/dev-gateway`, listener section
-`https-exposure-stage-a-dev-conalog-com`, owns the public HTTPS hostname and TLS
-material and forwards accepted traffic to Exposure's internal HTTP Service. This
-repository manages no Gateway resource or TLS material; the Stage A bundle owns
-only an `HTTPRoute` attachment to that listener. No Ingress is part of this
-contract, and Exposure does not trust forwarding headers as authorization or
-routing input.
-
-## Verification
+The coordinated real-Grant `TestExposureOrganizationContextE2E` run passed all
+15 cases under `-race` with `EXPOSURE_SOURCE_DIR` set to this checkout. It uses a
+PocketBase auth-refresh HTTP fixture, not live Goauthy or IED. See the
+[integration evidence and coordinated rollout requirements](docs/organization-context.md#verified-integration-evidence-and-limits).
 
 ```sh
-gofmt -w ./cmd ./internal ./deploy/stage-a-dev
 git diff --check
+sh ./deploy/verify-runtime-tools.sh
 go test -count=1 ./...
 go test -count=1 -race ./...
 go vet ./...
@@ -174,12 +158,3 @@ go build ./...
 ./deploy/stage-a-dev/test-stage-a.sh --fixture
 docker build --check .
 ```
-
-The Stage A template is render-only and deliberately contains unresolved
-`__REQUIRED_*__` inputs. It keeps Grant, Compos, Rauthy, and Exposure in one Pod;
-only Exposure receives a ClusterIP Service, and the bundle adds one HTTPRoute to
-the pre-existing `haproxy-gateway-system/dev-gateway` listener section
-`https-exposure-stage-a-dev-conalog-com`.
-
-See [Stage A deployment notes](deploy/stage-a-dev/README.md) and
-[selective-reuse provenance](docs/release-provenance.md).

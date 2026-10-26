@@ -30,69 +30,6 @@ func artifactJSON(t *testing.T, pointers []string) []byte {
 	return b
 }
 
-func patchDataArtifactJSON(t *testing.T, exposureID, operation string, pointers []string) []byte {
-	t.Helper()
-	sourceValue := patchDataSource{Kind: SourcePatchDataPlant, Operation: operation}
-	input := struct {
-		ArtifactType       string          `json:"artifactType"`
-		ExposureID         string          `json:"exposureId"`
-		ExposureVersion    int64           `json:"exposureVersion"`
-		Source             patchDataSource `json:"source"`
-		ProjectionPointers []string        `json:"projectionPointers"`
-	}{artifactType, exposureID, 1, sourceValue, pointers}
-	d := digest(t, input)
-	sourceJSON, err := json.Marshal(sourceValue)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := json.Marshal(artifactWire{artifactType, exposureID, 1, d, sourceJSON, pointers})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return b
-}
-
-func TestPatchDataPlantArtifactIsClosed(t *testing.T) {
-	valid := patchDataArtifactJSON(t, patchDataExposureID, patchDataOperation, []string{"/id", "/name", "/updated"})
-	a, err := Parse(valid)
-	if err != nil || a.SourceKind() != SourcePatchDataPlant || !a.ValidResourceID("4n5mdid6ccx1bh6") {
-		t.Fatalf("artifact=%#v err=%v", a, err)
-	}
-	if a.ValidResourceID("4n5mdid6ccx1bh") || a.ValidResourceID("4N5MDID6CCX1BH6") || a.ValidResourceID("../../plants") {
-		t.Fatal("invalid Patch Data resource ID accepted")
-	}
-	descriptor, ok := a.Operation()
-	if !ok || descriptor.ID != "plant.get" || descriptor.Version != 1 || descriptor.ProviderID != "patch-data" || descriptor.ActionID != "patch-data.plant.read" || descriptor.ResourceType != "plant" {
-		t.Fatalf("operation=%#v ok=%v", descriptor, ok)
-	}
-	for _, body := range [][]byte{
-		patchDataArtifactJSON(t, "other", patchDataOperation, []string{"/id", "/name", "/updated"}),
-		patchDataArtifactJSON(t, patchDataExposureID, "records.get", []string{"/id", "/name", "/updated"}),
-		patchDataArtifactJSON(t, patchDataExposureID, patchDataOperation, []string{"/id", "/metadata", "/name", "/updated"}),
-	} {
-		if _, err := Parse(body); err == nil {
-			t.Fatalf("unsafe Patch Data artifact accepted: %s", body)
-		}
-	}
-}
-
-func TestPatchDataArtifactRejectsLegacyOrBackendSelectorsEvenWithMatchingDigest(t *testing.T) {
-	for _, selector := range []string{"providerId", "actionId", "resourceType", "method", "path", "query", "fields", "filter", "sort", "expand", "view", "mask"} {
-		source := map[string]any{"kind": SourcePatchDataPlant, "operation": patchDataOperation, selector: "attacker-selected"}
-		input := map[string]any{
-			"artifactType": artifactType, "exposureId": patchDataExposureID, "exposureVersion": 1,
-			"source": source, "projectionPointers": []string{"/id", "/name", "/updated"},
-		}
-		input["artifactDigest"] = digest(t, input)
-		body, err := json.Marshal(input)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := Parse(body); err == nil {
-			t.Fatalf("selector %q accepted: %s", selector, body)
-		}
-	}
-}
 func digest(t *testing.T, value any) string {
 	t.Helper()
 	d, err := contracts.Digest(value)
@@ -181,5 +118,17 @@ func TestProjectRejectsContainerLeaves(t *testing.T) {
 		if got, err := a.Project(tc.raw); err == nil || got != nil {
 			t.Fatalf("pointer %s output=%#v err=%v", tc.pointer, got, err)
 		}
+	}
+}
+
+func TestRemovedServiceSpecificArtifactsFailClosed(t *testing.T) {
+	input := map[string]any{"artifactType": artifactType, "exposureId": "patch-data-plant-profile", "exposureVersion": 1, "source": map[string]any{"kind": "patch-data.plant.v1", "operation": "plant.get"}, "projectionPointers": []string{"/id", "/name", "/updated"}}
+	input["artifactDigest"] = digest(t, input)
+	body, err := json.Marshal(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Parse(body); err == nil {
+		t.Fatal("removed service-specific artifact accepted")
 	}
 }
