@@ -12,8 +12,7 @@ import (
 )
 
 const stageAArtifact = `{"artifactType":"exposure.read.v1","exposureId":"customer-profile","exposureVersion":1,"artifactDigest":"sha256:f03f2684ba9cf86c0fb5c3aa915eddd5f3f2523f2df4ea43014205634f854585","source":{"namespace":"wks_default","objectType":"otp_builtin_company_wks_default","schemaDigest":"sha256:ff37152682230e96eee7376ef415e7357d88846ea34bf78bb3555a2630371cf7"},"projectionPointers":["/domain","/employee_count"]}`
-const patchDataArtifact = `{"artifactType":"exposure.read.v1","exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"sha256:2782d8f92dca0b7a3e507ebad602cb95461c344230511e9cd22b5b39a8cf4ee7","source":{"kind":"patch-data.plant.v1","operation":"plant.get"},"projectionPointers":["/id","/name","/updated"]}`
-const stageAArtifactPayloadJSON = "[" + stageAArtifact + "," + patchDataArtifact + "]\n"
+const stageAArtifactPayloadJSON = "[" + stageAArtifact + "]\n"
 const stageAHTTPRoute = `apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -62,21 +61,6 @@ func TestStageAArtifactIsImmutableAndProjectsOnlyApprovedFields(t *testing.T) {
 	}
 }
 
-func TestStageAPatchDataArtifactIsImmutableAndProjectsOnlyApprovedFields(t *testing.T) {
-	a, err := readartifact.Parse([]byte(patchDataArtifact))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got, err := a.Project(map[string]any{"id": "4n5mdid6ccx1bh6", "name": "Gwangdeok", "updated": "2026-08-11 01:02:03.456Z", "organization": "hidden", "permission": "hidden", "metadata": map[string]any{"secret": true}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := map[string]any{"id": "4n5mdid6ccx1bh6", "name": "Gwangdeok", "updated": "2026-08-11 01:02:03.456Z"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("projected=%#v want=%#v", got, want)
-	}
-}
-
 func TestStageAArtifactPayloadRejectsStructuralAndDecoyVariants(t *testing.T) {
 	b, err := os.ReadFile("stage-a.yaml")
 	if err != nil {
@@ -89,8 +73,8 @@ func TestStageAArtifactPayloadRejectsStructuralAndDecoyVariants(t *testing.T) {
 		t.Fatalf("decoy payload=%q err=%v", payload, err)
 	}
 	for _, mutated := range [][]byte{
-		[]byte(strings.Replace(string(b), "  name: exposure-read-artifacts-patch-data-v1", "  name: other-artifacts", 1)),
-		[]byte(strings.Replace(string(b), "  name: rauthy-bootstrap-renderer", "  name: exposure-read-artifacts-patch-data-v1", 1)),
+		[]byte(strings.Replace(string(b), "  name: exposure-read-artifacts-compos-v2", "  name: other-artifacts", 1)),
+		[]byte(strings.Replace(string(b), "  name: rauthy-bootstrap-renderer", "  name: exposure-read-artifacts-compos-v2", 1)),
 		[]byte(strings.Replace(string(b), "  read-artifacts.json: |", "  read-artifacts.json: |\n  read-artifacts.json: |", 1)),
 		[]byte(strings.Replace(string(b), "  read-artifacts.json: |", "  unrelated: value\nmisplaced:\n  read-artifacts.json: |", 1)),
 	} {
@@ -105,7 +89,7 @@ func TestStageAUsesVersionedImmutableArtifactConfigMap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if bytes.Count(b, []byte("exposure-read-artifacts-patch-data-v1")) != 2 || !bytes.Contains(b, []byte("immutable: true")) || bytes.Contains(b, []byte("name: exposure-read-artifacts\n")) || bytes.Contains(b, []byte("configMap: {name: exposure-read-artifacts}")) {
+	if bytes.Count(b, []byte("exposure-read-artifacts-compos-v2")) != 2 || !bytes.Contains(b, []byte("immutable: true")) || bytes.Contains(b, []byte("name: exposure-read-artifacts\n")) || bytes.Contains(b, []byte("configMap: {name: exposure-read-artifacts}")) {
 		t.Fatal("artifact ConfigMap name is not versioned consistently")
 	}
 }
@@ -174,9 +158,6 @@ func TestStageAExposureUsesOnlyInternalPlainHTTP(t *testing.T) {
 	}
 	for _, required := range []string{
 		`{name: EXPOSURE_ADDR, value: ":8082"}`,
-		`{name: EXPOSURE_PATCH_DATA_URL, value: "http://patch-data.patch.svc.cluster.local:8090"}`,
-		`name: EXPOSURE_PATCH_DATA_SERVICE_TOKEN`,
-		`valueFrom: {secretKeyRef: {name: exposure-stage-a-secrets, key: __REQUIRED_EXPOSURE_PATCH_DATA_SERVICE_TOKEN_SECRET_KEY__}}`,
 		`{name: http, containerPort: 8082, protocol: TCP}`,
 		`httpGet: {path: /healthz, port: http, scheme: HTTP}`,
 		`httpGet: {path: /readyz, port: http, scheme: HTTP}`,
@@ -232,7 +213,7 @@ func stageAArtifactPayload(manifest []byte) ([]byte, error) {
 			inMetadata = true
 			continue
 		}
-		if inMetadata && bytes.Equal(line, []byte("  name: exposure-read-artifacts-patch-data-v1")) {
+		if inMetadata && bytes.Equal(line, []byte("  name: exposure-read-artifacts-compos-v2")) {
 			target = true
 			continue
 		}

@@ -67,7 +67,36 @@ type capability struct {
 	RecordScope           *recordScopePolicy           `json:"recordScope,omitempty"`
 	Batch                 *batchPolicy                 `json:"batch,omitempty"`
 	ResponseAuthorization *responseAuthorizationPolicy `json:"responseAuthorization,omitempty"`
+	OrganizationContext   string                       `json:"organizationContext,omitempty"`
 }
+
+// Omission retains the original required-organization contract and digest.
+// Explicit policy must have exactly this spelling and a supported string value;
+// encoding/json otherwise accepts case aliases and null for a string field.
+func (c *capability) UnmarshalJSON(b []byte) error {
+	if err := rejectDuplicateJSONKeys(b); err != nil {
+		return err
+	}
+	type wire capability
+	var out wire
+	if err := strictJSON(b, &out); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return err
+	}
+	for key := range fields {
+		if strings.EqualFold(key, "organizationContext") {
+			if key != "organizationContext" || (out.OrganizationContext != "required" && out.OrganizationContext != "optional") {
+				return errors.New("invalid organization context policy")
+			}
+		}
+	}
+	*c = capability(out)
+	return nil
+}
+
 type pathParameter struct {
 	Name     string `json:"name"`
 	Format   string `json:"format"`
@@ -223,6 +252,12 @@ func (p *Proxy) validateCatalog(c *catalog) error {
 	return nil
 }
 func validateCapability(c capability) error {
+	if c.OrganizationContext != "" && (c.AccessMode != "authorized" || (c.OrganizationContext != "required" && c.OrganizationContext != "optional")) {
+		return errors.New("unsupported organization context policy")
+	}
+	if c.OrganizationContext == "optional" && (c.RecordScope != nil || c.ResponseAuthorization != nil) {
+		return errors.New("scoped and response-reference authorization require organization context")
+	}
 	if c.Request.Authorization != "" && c.Request.Authorization != "forward-user" && c.Request.Authorization != "service-token" {
 		return errors.New("unsupported upstream authorization mode")
 	}
@@ -754,7 +789,7 @@ func validScalar(format, v string) bool {
 }
 
 func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap capability, query string, headers http.Header, body *preparedBody, resourceID string, evidence map[string]string, upstreamQuery *string, children []batchChild, authorizedUntil *time.Time, proof *responseProof) error {
-	auth, org, subject, audience, err := bearerIdentityWithOrganization(r, p.cfg, managementOnboardingCapability(p.cfg.ProviderID, cap))
+	auth, org, subject, audience, err := bearerIdentityWithOrganization(r, p.cfg, cap.OrganizationContext == "optional")
 	if err != nil {
 		return decisionError{http.StatusUnauthorized, "unauthorized"}
 	}
@@ -979,9 +1014,9 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, cap capability, 
 			}
 		}
 	}
-	if cap.AccessMode == "authorized" {
-		// A cached upstream response could outlive the Grant binding that
-		// authorized it, including a successful conditional revalidation.
+	if cap.AccessMode == "authorized" || cap.AccessMode == "public_authn" {
+		// Protected responses must not outlive their decision; login responses
+		// can contain newly issued credentials even when upstream says cacheable.
 		w.Header().Set("Cache-Control", "no-store")
 	}
 	w.WriteHeader(resp.StatusCode)

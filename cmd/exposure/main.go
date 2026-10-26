@@ -21,7 +21,6 @@ import (
 	"github.com/mrchypark/exposure/internal/engine"
 	"github.com/mrchypark/exposure/internal/grantclient"
 	"github.com/mrchypark/exposure/internal/httpapi"
-	"github.com/mrchypark/exposure/internal/patchdata"
 	"github.com/mrchypark/exposure/internal/readartifact"
 	"github.com/mrchypark/exposure/internal/readiness"
 	"github.com/mrchypark/exposure/internal/service"
@@ -56,17 +55,7 @@ func run() error {
 	}
 
 	compos := engine.New("http://127.0.0.1:7878", internalHTTPClient(cfg), cfg.DependencyTimeout, int64(cfg.MaxResponseBytes))
-	var patchData *patchdata.Client
-	if usesSource(artifacts, readartifact.SourcePatchDataPlant) {
-		if cfg.PatchDataURL == "" || cfg.PatchDataServiceToken == "" {
-			return fmt.Errorf("EXPOSURE_PATCH_DATA_URL and EXPOSURE_PATCH_DATA_SERVICE_TOKEN are required by Patch Data artifacts")
-		}
-		patchData, err = patchdata.New(cfg.PatchDataURL, internalHTTPClient(cfg), cfg.DependencyTimeout, int64(cfg.MaxResponseBytes), cfg.PatchDataServiceToken)
-		if err != nil {
-			return err
-		}
-	}
-	svc, err := service.New(artifacts, grant, source.New(compos, patchData), appKey)
+	svc, err := service.New(artifacts, grant, source.New(compos), appKey)
 	if err != nil {
 		return err
 	}
@@ -109,9 +98,7 @@ func run() error {
 	return nil
 }
 
-// runCapabilityProxy intentionally does not construct the legacy artifact
-// service.  That prevents an accidentally enabled generic listener from
-// inheriting a Patch Data operation table or its service credential.
+// runCapabilityProxy serves only the configured provider's pinned catalog.
 func runCapabilityProxy(cfg config.Config) error {
 	p, err := capability.New(cfg.Proxy, cfg.LearnerURL, proxyHTTPClient(cfg), cfg.MaxConcurrent)
 	if err != nil {
@@ -193,15 +180,6 @@ func minDuration(a, b time.Duration) time.Duration {
 		return a
 	}
 	return b
-}
-
-func usesSource(artifacts []readartifact.Artifact, kind string) bool {
-	for _, artifact := range artifacts {
-		if artifact.SourceKind() == kind {
-			return true
-		}
-	}
-	return false
 }
 
 func loadReadArtifacts(path string) ([]readartifact.Artifact, error) {

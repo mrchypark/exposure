@@ -9,7 +9,6 @@ import (
 
 	"github.com/mrchypark/exposure/internal/contracts"
 	"github.com/mrchypark/exposure/internal/dependency"
-	"github.com/mrchypark/exposure/internal/operation"
 	"github.com/mrchypark/exposure/internal/readartifact"
 )
 
@@ -29,12 +28,6 @@ func (g *fakeGrant) Read(_ context.Context, request contracts.ReadGrantRequest, 
 		PrincipalDigest: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
 		IssuedAt:        nowForTest.Add(-time.Minute), ExpiresAt: nowForTest.Add(time.Minute),
 	}
-	if descriptor, ok := operation.Lookup(request.OperationID); ok {
-		response.OperationID = descriptor.ID
-		response.ProviderID = descriptor.ProviderID
-		response.ActionID = descriptor.ActionID
-		response.ResourceType = descriptor.ResourceType
-	}
 	if g.mutate != nil {
 		g.mutate(&response)
 	}
@@ -42,10 +35,9 @@ func (g *fakeGrant) Read(_ context.Context, request contracts.ReadGrantRequest, 
 }
 
 type fakeSource struct {
-	calls         int
-	kind          string
-	patchDataMode bool
-	err           error
+	calls int
+	kind  string
+	err   error
 }
 
 func (s *fakeSource) ReadObject(_ context.Context, artifact readartifact.Artifact, resourceID string) (contracts.SourceObject, error) {
@@ -58,66 +50,10 @@ func (s *fakeSource) ReadObject(_ context.Context, artifact readartifact.Artifac
 	if kind == "" {
 		kind = artifact.SourceKind()
 	}
-	if s.patchDataMode {
-		return contracts.SourceObject{
-			Kind: kind, ResourceID: resourceID, SourceRevision: "2026-08-11 01:02:03.456Z",
-			RawResource: map[string]any{"id": resourceID, "name": "Gwangdeok", "updated": "2026-08-11 01:02:03.456Z", "permission": "never-return"},
-		}, nil
-	}
 	return contracts.SourceObject{
 		Kind: kind, ResourceID: resourceID, ResourceVersion: &version,
 		RawResource: map[string]any{"domain": "example.test", "employee_count": json.Number("12"), "secret": "never-return"},
 	}, nil
-}
-
-func TestPatchDataDependencyErrorSemantics(t *testing.T) {
-	for _, tc := range []struct {
-		code string
-		want error
-	}{
-		{"unauthenticated", ErrUnauthenticated},
-		{"access_denied", ErrDenied},
-		{"not_found", ErrConflict},
-		{"upstream_failure", ErrUnavailable},
-		{"malformed_response", ErrUnavailable},
-	} {
-		t.Run(tc.code, func(t *testing.T) {
-			grant := &fakeGrant{}
-			source := &fakeSource{patchDataMode: true, err: &dependency.RemoteError{Code: tc.code}}
-			svc, err := New([]readartifact.Artifact{patchDataArtifactForTest(t)}, grant, source, "server-owned-key")
-			if err != nil {
-				t.Fatal(err)
-			}
-			svc.now = func() time.Time { return nowForTest }
-			_, err = svc.Read(context.Background(), ReadRequest{ExposureID: "patch-data-plant-profile", ResourceID: "4n5mdid6ccx1bh6", Authorization: "Bearer user", OrganizationID: "org-1"})
-			if !errors.Is(err, tc.want) || grant.calls != 1 || source.calls != 1 {
-				t.Fatalf("err=%v grant=%d source=%d", err, grant.calls, source.calls)
-			}
-		})
-	}
-}
-
-func patchDataArtifactForTest(t *testing.T) readartifact.Artifact {
-	t.Helper()
-	digestInput := map[string]any{
-		"artifactType": "exposure.read.v1", "exposureId": "patch-data-plant-profile", "exposureVersion": 1,
-		"source":             map[string]any{"kind": "patch-data.plant.v1", "operation": "plant.get"},
-		"projectionPointers": []string{"/id", "/name", "/updated"},
-	}
-	digest, err := contracts.Digest(digestInput)
-	if err != nil {
-		t.Fatal(err)
-	}
-	digestInput["artifactDigest"] = digest
-	data, err := json.Marshal(digestInput)
-	if err != nil {
-		t.Fatal(err)
-	}
-	artifact, err := readartifact.Parse(data)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return artifact
 }
 
 var nowForTest = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -173,65 +109,6 @@ func TestReadProjectsOnlyArtifactScalars(t *testing.T) {
 	}
 }
 
-func TestPatchDataReadAuthorizesBeforeSourceAndUsesOpaqueRevision(t *testing.T) {
-	grant := &fakeGrant{}
-	source := &fakeSource{patchDataMode: true}
-	svc, err := New([]readartifact.Artifact{patchDataArtifactForTest(t)}, grant, source, "server-owned-key")
-	if err != nil {
-		t.Fatal(err)
-	}
-	svc.now = func() time.Time { return nowForTest }
-	response, err := svc.Read(context.Background(), ReadRequest{
-		ExposureID: "patch-data-plant-profile", ResourceID: "4n5mdid6ccx1bh6", Authorization: "Bearer user", OrganizationID: "org-1",
-	})
-	if err != nil || grant.calls != 1 || grant.last.OperationID != "plant.get" || source.calls != 1 || response.ResourceVersion != nil || response.SourceRevision != "2026-08-11 01:02:03.456Z" || len(response.Data) != 3 || response.Data["name"] != "Gwangdeok" {
-		t.Fatalf("response=%#v grant=%d source=%d err=%v", response, grant.calls, source.calls, err)
-	}
-	if _, leaked := response.Data["permission"]; leaked {
-		t.Fatal("Patch Data ACL metadata leaked")
-	}
-}
-
-func TestPatchDataReadRejectsOperationPolicyTamperBeforeExecution(t *testing.T) {
-	for _, test := range []struct {
-		name   string
-		mutate func(*contracts.ReadGrantResponse)
-	}{
-		{"operation", func(r *contracts.ReadGrantResponse) { r.OperationID = "plant.list" }},
-		{"provider", func(r *contracts.ReadGrantResponse) { r.ProviderID = "exposure" }},
-		{"action", func(r *contracts.ReadGrantResponse) { r.ActionID = "exposure.read" }},
-		{"resource type", func(r *contracts.ReadGrantResponse) { r.ResourceType = "patch-data-plant-profile" }},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			grant := &fakeGrant{mutate: test.mutate}
-			source := &fakeSource{patchDataMode: true}
-			svc, err := New([]readartifact.Artifact{patchDataArtifactForTest(t)}, grant, source, "server-owned-key")
-			if err != nil {
-				t.Fatal(err)
-			}
-			svc.now = func() time.Time { return nowForTest }
-			_, err = svc.Read(context.Background(), ReadRequest{ExposureID: "patch-data-plant-profile", ResourceID: "4n5mdid6ccx1bh6", Authorization: "Bearer user", OrganizationID: "org-1"})
-			if !errors.Is(err, contracts.ErrContract) || source.calls != 0 {
-				t.Fatalf("error=%v source calls=%d", err, source.calls)
-			}
-		})
-	}
-}
-
-func TestPatchDataResourceIDRejectedBeforeGrant(t *testing.T) {
-	grant := &fakeGrant{}
-	source := &fakeSource{patchDataMode: true}
-	svc, err := New([]readartifact.Artifact{patchDataArtifactForTest(t)}, grant, source, "server-owned-key")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, resourceID := range []string{"short", "4N5MDID6CCX1BH6", "../../etc/passwd"} {
-		if _, err := svc.Read(context.Background(), ReadRequest{ExposureID: "patch-data-plant-profile", ResourceID: resourceID, Authorization: "Bearer user", OrganizationID: "org-1"}); !errors.Is(err, contracts.ErrContract) || grant.calls != 0 || source.calls != 0 {
-			t.Fatalf("resource=%q err=%v grant=%d source=%d", resourceID, err, grant.calls, source.calls)
-		}
-	}
-}
-
 func TestReadRejectsReplayedOrExpiredGrantBeforeSource(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -254,6 +131,24 @@ func TestReadRejectsReplayedOrExpiredGrantBeforeSource(t *testing.T) {
 			_, err := service.Read(context.Background(), ReadRequest{ExposureID: "customer-profile", ResourceID: "company-1", Authorization: "Bearer user", OrganizationID: "org-1"})
 			if !errors.Is(err, test.want) || source.calls != 0 {
 				t.Fatalf("error=%v source calls=%d", err, source.calls)
+			}
+		})
+	}
+}
+
+func TestDependencyErrorSemantics(t *testing.T) {
+	for _, tc := range []struct {
+		code string
+		want error
+	}{
+		{"unauthenticated", ErrUnauthenticated}, {"access_denied", ErrDenied}, {"not_found", ErrConflict}, {"upstream_failure", ErrUnavailable}, {"malformed_response", ErrUnavailable},
+	} {
+		t.Run(tc.code, func(t *testing.T) {
+			grant, source := &fakeGrant{}, &fakeSource{err: &dependency.RemoteError{Code: tc.code}}
+			svc := serviceForTest(t, grant, source)
+			_, err := svc.Read(context.Background(), ReadRequest{ExposureID: "customer-profile", ResourceID: "company-1", Authorization: "Bearer user", OrganizationID: "org-1"})
+			if !errors.Is(err, tc.want) {
+				t.Fatalf("error=%v want=%v", err, tc.want)
 			}
 		})
 	}

@@ -13,17 +13,12 @@ type Compos interface {
 	ReadObject(context.Context, contracts.SourceReadRequest) (contracts.SourceReadResponse, error)
 }
 
-type PatchData interface {
-	ReadPlant(context.Context, string) (contracts.SourceObject, error)
-}
-
 type Router struct {
-	compos    Compos
-	patchData PatchData
+	compos Compos
 }
 
-func New(compos Compos, patchData PatchData) *Router {
-	return &Router{compos: compos, patchData: patchData}
+func New(compos Compos) *Router {
+	return &Router{compos: compos}
 }
 
 func (r *Router) ReadObject(ctx context.Context, artifact readartifact.Artifact, resourceID string) (contracts.SourceObject, error) {
@@ -45,11 +40,6 @@ func (r *Router) ReadObject(ctx context.Context, artifact readartifact.Artifact,
 			Kind: readartifact.SourceComposObject, ResourceID: object.ResourceID,
 			ResourceVersion: &version, RawResource: object.RawResource,
 		}, nil
-	case readartifact.SourcePatchDataPlant:
-		if r.patchData == nil {
-			return contracts.SourceObject{}, fmt.Errorf("Patch Data source is not configured")
-		}
-		return r.patchData.ReadPlant(ctx, resourceID)
 	default:
 		return contracts.SourceObject{}, fmt.Errorf("unsupported source kind")
 	}

@@ -9,6 +9,9 @@
 #
 # --full delegates to Grant's cmd/grant-management-catalog. The source tree
 # must already exist and contain the CLI entry point.
+# The producer must implement docs/organization-context.md to emit optional
+# organization policies. This wrapper never adds policy or rewrites digests
+# behind the producer's back; older producers emit required-org catalogs.
 set -eu
 
 # ---------- legacy group-only fixture (default) ----------

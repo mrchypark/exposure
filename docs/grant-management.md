@@ -114,8 +114,8 @@ IdP traffic directly. These paths and the old provisioning route are absent
 from this catalog, so management Exposure returns 404 without contacting either
 Grant's decision endpoint or the upstream service. Bootstrap and `/ops` remain
 private. The lifecycle APIs are Grant's business endpoints. Exposure retains
-Grant as the authority and adds only the narrowly matched orgless transport
-exception described below; it does not decide user permissions locally.
+Grant as the authority and uses the generic catalog-bound organization-context
+policy described below; it does not decide user permissions locally.
 
 Generate the management catalog from the deployed Grant revision, review and
 register its new Action definitions, explicitly assign the required permissions
@@ -136,7 +136,8 @@ deployment tests are required to prove actual policy and persistence behavior.
 
 ## Authenticated onboarding without an organization
 
-Only these exact authenticated management contracts may omit `X-Organization-ID`:
+The fixture explicitly sets `organizationContext: "optional"` on these four
+capabilities. They are examples of the generic policy, not a runtime whitelist:
 
 | Method | Path | Action |
 |---|---|---|
@@ -146,11 +147,15 @@ Only these exact authenticated management contracts may omit `X-Organization-ID`
 | POST | `/api/v1/orgs` | `grant-management.organization.create` |
 
 Exposure requires a Bearer token and an active pinned catalog even for these
-routes. The exception also matches Provider, method, path, Action, service/grant
-resource, forward-user policy and exact body kind; record scope, batch and
-response-authorization extensions cannot use it. The omitted organization
-header stays absent on the PDP request and upstream request; it is not sent as
-an empty header. Other organization routes retain their organization requirement.
+routes. Method/path, Action, resource and request policies remain bound by the
+normal capability and catalog digests. The omitted organization header stays
+absent on the PDP and upstream requests; it is not sent as an empty header.
+Any capability without the explicit opt-in requires an organization, including
+these same management tuples in an older catalog. Before deployment, upgrade
+the Grant producer/verifier and register and activate a new reviewed catalog
+generation with recalculated digests; see the
+[producer contract](organization-context.md). Exposure does not retrofit policy
+onto old catalogs or accept the old digest for changed policy.
 
 Grant authenticates the external identity, requires the configured enforcer app
 to match the token client, and checks that app is active, ready, trusted and

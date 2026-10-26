@@ -14,7 +14,7 @@ import (
 var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 
 type Config struct {
-	ListenAddr, LearnerURL, PatchDataURL, PatchDataServiceToken                                   string
+	ListenAddr, LearnerURL                                                                        string
 	ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout, DependencyTimeout, ShutdownTimeout time.Duration
 	MaxHeaderBytes, MaxResponseBytes, MaxConcurrent                                               int
 	Proxy                                                                                         ProxyConfig
@@ -39,7 +39,7 @@ type ProxyConfig struct {
 }
 
 func Load() (Config, error) {
-	c := Config{ListenAddr: env("EXPOSURE_ADDR", ":8080"), LearnerURL: os.Getenv("EXPOSURE_GRANT_LEARNER_URL"), PatchDataURL: os.Getenv("EXPOSURE_PATCH_DATA_URL"), PatchDataServiceToken: os.Getenv("EXPOSURE_PATCH_DATA_SERVICE_TOKEN"), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, DependencyTimeout: 5 * time.Second, ShutdownTimeout: 15 * time.Second, MaxHeaderBytes: 32 << 10, MaxResponseBytes: 4 << 20, MaxConcurrent: 128}
+	c := Config{ListenAddr: env("EXPOSURE_ADDR", ":8080"), LearnerURL: os.Getenv("EXPOSURE_GRANT_LEARNER_URL"), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, DependencyTimeout: 5 * time.Second, ShutdownTimeout: 15 * time.Second, MaxHeaderBytes: 32 << 10, MaxResponseBytes: 4 << 20, MaxConcurrent: 128}
 	var err error
 	for _, x := range []struct {
 		name string
@@ -107,13 +107,8 @@ func Load() (Config, error) {
 			*item.target = d
 		}
 	}
-	if err = validateInternalURL(c.LearnerURL, "grant", 8080); err != nil {
+	if err = validateFixedOrigin(c.LearnerURL); err != nil {
 		return Config{}, fmt.Errorf("learner URL: %w", err)
-	}
-	if !c.Proxy.Enabled {
-		if err = validateInternalURL(c.PatchDataURL, "patch-data", 8090); err != nil {
-			return Config{}, fmt.Errorf("Patch Data URL: %w", err)
-		}
 	}
 	if c.DependencyTimeout >= c.WriteTimeout {
 		return Config{}, fmt.Errorf("dependency timeout must be below write timeout")
@@ -141,7 +136,7 @@ func Load() (Config, error) {
 		if c.Proxy.DataAddr == c.Proxy.AdminAddr {
 			return Config{}, fmt.Errorf("proxy data and admin listeners must differ")
 		}
-		if err := validateProviderOrigin(c.Proxy.Origin); err != nil {
+		if err := validateFixedOrigin(c.Proxy.Origin); err != nil {
 			return Config{}, fmt.Errorf("provider origin: %w", err)
 		}
 	}
@@ -214,48 +209,43 @@ func isDigest(v string) bool {
 	return true
 }
 
-func validateProviderOrigin(raw string) error {
+func validateFixedOrigin(raw string) error {
 	u, err := url.Parse(raw)
-	if err != nil || raw == "" || u.Scheme != "http" || u.Host == "" || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Path != "" || u.RawPath != "" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") {
-		return fmt.Errorf("must be a canonical fixed internal HTTP origin")
+	if err != nil || raw == "" || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Path != "" || u.RawPath != "" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") {
+		return fmt.Errorf("must be a canonical fixed HTTP(S) origin without credentials, path, query, or fragment")
+	}
+	port := u.Port()
+	if port != "" {
+		n, err := strconv.Atoi(port)
+		if err != nil || n < 1 || n > 65535 || strconv.Itoa(n) != port {
+			return fmt.Errorf("must use a canonical port between 1 and 65535")
+		}
 	}
 	host := u.Hostname()
 	if ip := net.ParseIP(host); ip != nil {
-		if ip.String() != "127.0.0.1" && ip.String() != "::1" {
-			return fmt.Errorf("must be loopback or Kubernetes Service")
+		if host != ip.String() {
+			return fmt.Errorf("must use canonical IP spelling")
 		}
-		return nil
-	}
-	if !strings.HasSuffix(host, ".svc.cluster.local") || strings.Contains(host, "..") || host != strings.ToLower(host) {
-		return fmt.Errorf("must be a canonical Kubernetes Service")
-	}
-	return nil
-}
-
-func validateInternalURL(raw, service string, port int) error {
-	u, err := url.Parse(raw)
-	if err != nil || raw == "" || u.Scheme != "http" || u.Host == "" || u.User != nil || u.Opaque != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Path != "" || u.RawPath != "" || u.Hostname() == "" || strings.HasSuffix(u.Host, ":") {
-		return fmt.Errorf("must be a canonical internal HTTP origin without credentials, path, query, or fragment")
-	}
-	wantPort := strconv.Itoa(port)
-	if u.Port() != wantPort {
-		return fmt.Errorf("must use port %s", wantPort)
-	}
-	host := u.Hostname()
-	if ip := net.ParseIP(host); ip != nil {
-		canonicalIP := ip.String()
-		if (canonicalIP != "127.0.0.1" && canonicalIP != "::1") || raw != "http://"+net.JoinHostPort(canonicalIP, wantPort) {
-			return fmt.Errorf("must use canonical loopback 127.0.0.1 or ::1")
+	} else {
+		labels := strings.Split(host, ".")
+		if len(host) > 253 {
+			return fmt.Errorf("hostname is too long")
 		}
-		return nil
+		for _, label := range labels {
+			if !dnsLabel.MatchString(label) {
+				return fmt.Errorf("must use a canonical lowercase DNS hostname")
+			}
+		}
 	}
-	prefix, suffix := service+".", ".svc.cluster.local"
-	if !strings.HasPrefix(host, prefix) || !strings.HasSuffix(host, suffix) {
-		return fmt.Errorf("must use the %s Kubernetes Service", service)
+	canonicalHost := host
+	if strings.Contains(host, ":") {
+		canonicalHost = "[" + host + "]"
 	}
-	namespace := strings.TrimSuffix(strings.TrimPrefix(host, prefix), suffix)
-	if !dnsLabel.MatchString(namespace) || raw != "http://"+service+"."+namespace+suffix+":"+wantPort {
-		return fmt.Errorf("must use a canonical lowercase Kubernetes namespace")
+	if port != "" {
+		canonicalHost = net.JoinHostPort(host, port)
+	}
+	if raw != u.Scheme+"://"+canonicalHost {
+		return fmt.Errorf("must use a canonical fixed origin")
 	}
 	return nil
 }

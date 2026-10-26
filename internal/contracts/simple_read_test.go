@@ -55,37 +55,3 @@ func TestReadGrantResponseRequiresCanonicalRawPrincipalDigest(t *testing.T) {
 		}
 	}
 }
-
-func TestPlantGetGrantDecisionBindsExactRegisteredOperation(t *testing.T) {
-	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	request := ReadGrantRequest{
-		ExposureID: "patch-data-plant-profile", ExposureVersion: 1,
-		ArtifactDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-		ResourceID:     "4n5mdid6ccx1bh6", RequestBinding: "fresh-binding", OperationID: "plant.get",
-	}
-	valid := `{"allowed":true,"reason":"trusted_application","exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","resourceId":"4n5mdid6ccx1bh6","requestBinding":"fresh-binding","operationId":"plant.get","providerId":"patch-data","actionId":"patch-data.plant.read","resourceType":"plant","principalDigest":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","issuedAt":"2025-12-31T23:59:00Z","expiresAt":"2026-01-01T00:01:00Z"}`
-	var decision ReadGrantResponse
-	if err := json.Unmarshal([]byte(valid), &decision); err != nil || decision.ValidateAgainst(request, now) != nil {
-		t.Fatalf("valid operation decision rejected: decision=%#v err=%v", decision, err)
-	}
-	for _, mutation := range []func(*ReadGrantResponse){
-		func(r *ReadGrantResponse) { r.OperationID = "plant.list" },
-		func(r *ReadGrantResponse) { r.ProviderID = "exposure" },
-		func(r *ReadGrantResponse) { r.ActionID = "exposure.read" },
-		func(r *ReadGrantResponse) { r.ResourceType = "patch-data-plant-profile" },
-	} {
-		changed := decision
-		mutation(&changed)
-		if err := changed.ValidateAgainst(request, now); err == nil {
-			t.Fatalf("tampered operation decision accepted: %#v", changed)
-		}
-	}
-	for _, invalid := range []string{
-		`{"allowed":true,"reason":"ok","exposureId":"e","exposureVersion":1,"artifactDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","resourceId":"r","requestBinding":"b","operationId":"plant.get","principalDigest":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb","issuedAt":"2025-12-31T23:59:00Z","expiresAt":"2026-01-01T00:01:00Z"}`,
-		valid[:len(valid)-1] + `,"backendPath":"/api/collections/plants/records/x"}`,
-	} {
-		if err := json.Unmarshal([]byte(invalid), &ReadGrantResponse{}); err == nil {
-			t.Fatalf("incomplete or backend-selectable decision accepted: %s", invalid)
-		}
-	}
-}

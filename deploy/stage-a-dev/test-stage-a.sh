@@ -198,7 +198,7 @@ test "$(rg -c 'allowPrivilegeEscalation: false' "$manifest")" = 5 || fail "conta
 rg -F 'runAsNonRoot: true' "$manifest" >/dev/null || fail "non-root Pod context missing"
 rg -F 'GOOS=$TARGETOS GOARCH=$TARGETARCH' "$root/Dockerfile" >/dev/null || fail "Dockerfile must honor target platform"
 rg -F 'USER nonroot:nonroot' "$root/Dockerfile" >/dev/null || fail "Dockerfile must run non-root"
-artifact='[{"artifactType":"exposure.read.v1","exposureId":"customer-profile","exposureVersion":1,"artifactDigest":"sha256:f03f2684ba9cf86c0fb5c3aa915eddd5f3f2523f2df4ea43014205634f854585","source":{"namespace":"wks_default","objectType":"otp_builtin_company_wks_default","schemaDigest":"sha256:ff37152682230e96eee7376ef415e7357d88846ea34bf78bb3555a2630371cf7"},"projectionPointers":["/domain","/employee_count"]},{"artifactType":"exposure.read.v1","exposureId":"patch-data-plant-profile","exposureVersion":1,"artifactDigest":"sha256:2782d8f92dca0b7a3e507ebad602cb95461c344230511e9cd22b5b39a8cf4ee7","source":{"kind":"patch-data.plant.v1","operation":"plant.get"},"projectionPointers":["/id","/name","/updated"]}]'
+artifact='[{"artifactType":"exposure.read.v1","exposureId":"customer-profile","exposureVersion":1,"artifactDigest":"sha256:f03f2684ba9cf86c0fb5c3aa915eddd5f3f2523f2df4ea43014205634f854585","source":{"namespace":"wks_default","objectType":"otp_builtin_company_wks_default","schemaDigest":"sha256:ff37152682230e96eee7376ef415e7357d88846ea34bf78bb3555a2630371cf7"},"projectionPointers":["/domain","/employee_count"]}]'
 artifact_payload=$tmpdir/read-artifacts.json
 : > "$artifact_payload"
 awk -v output="$artifact_payload" '
@@ -210,7 +210,7 @@ awk -v output="$artifact_payload" '
   $0 == "---" { finish_document(); next }
   $0 == "kind: ConfigMap" { is_config=1; next }
   is_config && $0 == "metadata:" { in_metadata=1; next }
-  in_metadata && $0 == "  name: exposure-read-artifacts-patch-data-v1" { target=1; next }
+  in_metadata && $0 == "  name: exposure-read-artifacts-compos-v2" { target=1; next }
   in_metadata && /^  [^ ]/ { in_metadata=0 }
   target && $0 == "data:" { in_data=1; next }
   in_data && /^[^[:space:]]/ { in_data=0 }
@@ -308,7 +308,7 @@ test "$(grep -Ec '^      GCP_(SA_KEY|REGISTRY_HOST|PROJECT_ID|REPOSITORY):' "$wo
 ! rg -F 'actions: read' "$workflow" >/dev/null || fail "workflow API query permission is obsolete"
 
 if [ "$fixture" = 0 ]; then
-  approved='__REQUIRED_COMPOS_HIQLITE_STORAGE_SIZE__ __REQUIRED_COMPOS_PROJECTION_SIGNING_KEY_ID_SECRET_KEY__ __REQUIRED_COMPOS_PROJECTION_SIGNING_SEED_B64_SECRET_KEY__ __REQUIRED_GRANT_RAUTHY_CONFIG_MOUNT_PATH__ __REQUIRED_EXPOSURE_IMAGE_DIGEST__ __REQUIRED_EXPOSURE_GRANT_APP_AUTH_KEY_SECRET_KEY__ __REQUIRED_EXPOSURE_PATCH_DATA_SERVICE_TOKEN_SECRET_KEY__'
+  approved='__REQUIRED_COMPOS_HIQLITE_STORAGE_SIZE__ __REQUIRED_COMPOS_PROJECTION_SIGNING_KEY_ID_SECRET_KEY__ __REQUIRED_COMPOS_PROJECTION_SIGNING_SEED_B64_SECRET_KEY__ __REQUIRED_GRANT_RAUTHY_CONFIG_MOUNT_PATH__ __REQUIRED_EXPOSURE_IMAGE_DIGEST__ __REQUIRED_EXPOSURE_GRANT_APP_AUTH_KEY_SECRET_KEY__'
   for placeholder in $(rg -o '__REQUIRED_[A-Z0-9_]*__' "$manifest" | sort -u); do
     case " $approved " in *" $placeholder "*) ;; *) fail "unapproved render placeholder: $placeholder" ;; esac
   done
