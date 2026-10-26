@@ -1,0 +1,15 @@
+{
+  "grantImage":"REQUIRED_OFFICIAL_GHCR_GRANT_DIGEST",
+  "grantRelease":"REQUIRED_OFFICIAL_RELEASE_TAG",
+  "grantRevision":"REQUIRED_RELEASE_SOURCE_SHA",
+  "clusterID":"grant-exposure-v020-20261026",
+  "nodeID":"grant-exposure-v020-voter-0",
+  "organizationID":"grant-exposure-v020",
+  "applicationID":"grant-exposure-v020-management",
+  "pepClientID":"grant-exposure-v020-pep",
+  "issuer":"https://goauthy.grant-exposure-auth-test-v020.svc.cluster.local:8443",
+  "introspectionClientID":"grant-exposure-v020-test",
+  "expectedClientID":"grant-exposure-v020-test",
+  "resource":"https://grant-exposure-v020.test/management",
+  "requiredScopes":"openid goauthy.read"
+}

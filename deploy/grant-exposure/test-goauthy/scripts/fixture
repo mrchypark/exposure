@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+src=$(CDPATH= cd -- "$(dirname -- "$0")/fixture-src" && pwd)
+key=$( (go env GOVERSION GOOS GOARCH; shasum -a 256 "$src"/*.go "$src/go.mod") | shasum -a 256 | cut -d ' ' -f1)
+cache="${CODEX_GO_SCRIPT_CACHE:-$HOME/.cache/codex-go-scripts}/exposure-test-goauthy/$key"
+if [ ! -x "$cache/fixture" ]; then
+  mkdir -p "$cache"
+  tmp="$cache/fixture.tmp.$$"
+  trap 'rm -f "$tmp"' EXIT HUP INT TERM
+  (cd "$src" && GOWORK=off go build -trimpath -o "$tmp" .)
+  mv "$tmp" "$cache/fixture"
+  trap - EXIT HUP INT TERM
+fi
+exec "$cache/fixture" "$@"
