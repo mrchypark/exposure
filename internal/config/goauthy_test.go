@@ -3,7 +3,7 @@ package config
 import "testing"
 
 func TestGoauthyCredentialConfigIsPinned(t *testing.T) {
-	for _, applicationID := range []string{"ied-management", "ied-data"} {
+	for _, applicationID := range []string{"", "ied-management", "ied-data"} {
 		valid := ProxyConfig{CredentialMode: "goauthy", GoauthyIssuer: "https://gw-auth.dev.conalog.com", GoauthyApplicationID: applicationID}
 		if err := valid.ValidateCredentialMode(); err != nil {
 			t.Fatalf("application=%q: %v", applicationID, err)
@@ -17,7 +17,6 @@ func TestGoauthyCredentialConfigIsPinned(t *testing.T) {
 		func(c *ProxyConfig) { c.GoauthyIssuer = "https://gw-auth.dev.conalog.com:443" },
 		func(c *ProxyConfig) { c.GoauthyIssuer = "https://GW-auth.dev.conalog.com" },
 		func(c *ProxyConfig) { c.GoauthyIssuer = "https://gw-auth.dev.conalog.com?x=1" },
-		func(c *ProxyConfig) { c.GoauthyApplicationID = "" },
 		func(c *ProxyConfig) { c.GoauthyApplicationID = "ied data" },
 		func(c *ProxyConfig) { c.PocketBaseIssuer = "https://other.example" },
 		func(c *ProxyConfig) { c.CredentialMode = "rauthy" },

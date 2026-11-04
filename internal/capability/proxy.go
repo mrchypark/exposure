@@ -49,7 +49,34 @@ type catalog struct {
 	ResponseResources []responseResource `json:"responseResources,omitempty"`
 	IssuedAt          string             `json:"issuedAt"`
 	ExpiresAt         string             `json:"expiresAt"`
+	AuthorizationMode string             `json:"authorizationMode,omitempty"`
+	PepPolicyRevision int64              `json:"pepPolicyRevision,omitempty"`
 }
+
+func (c *catalog) UnmarshalJSON(b []byte) error {
+	type wire catalog
+	var out wire
+	if err := strictJSON(b, &out); err != nil {
+		return err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(b, &fields); err != nil {
+		return err
+	}
+	_, mode := fields["authorizationMode"]
+	_, revision := fields["pepPolicyRevision"]
+	for key := range fields {
+		if (strings.EqualFold(key, "authorizationMode") && key != "authorizationMode") || (strings.EqualFold(key, "pepPolicyRevision") && key != "pepPolicyRevision") {
+			return errors.New("invalid PEP policy spelling")
+		}
+	}
+	if mode != revision || mode && (out.AuthorizationMode != "user" || out.PepPolicyRevision <= 0) {
+		return errors.New("invalid PEP policy")
+	}
+	*c = catalog(out)
+	return nil
+}
+
 type capability struct {
 	CapabilityID          string                       `json:"capabilityId"`
 	Version               uint64                       `json:"version"`
@@ -208,6 +235,13 @@ func (p *Proxy) Refresh(ctx context.Context) error {
 	return nil
 }
 func (p *Proxy) validateCatalog(c *catalog) error {
+	if c.AuthorizationMode == "user" {
+		if c.PepPolicyRevision <= 0 || p.cfg.CredentialMode != "goauthy" {
+			return errors.New("unsupported user policy")
+		}
+	} else if c.AuthorizationMode != "" || c.PepPolicyRevision != 0 || p.cfg.CredentialMode == "goauthy" && p.cfg.GoauthyApplicationID == "" {
+		return errors.New("invalid application policy")
+	}
 	if c.SchemaVersion != 1 || c.ProviderID != p.cfg.ProviderID || c.PepClientID != p.cfg.PepClientID || c.CatalogDigest != p.cfg.ExpectedCatalogDigest || !contracts.IsDigest(c.CatalogDigest) {
 		return errors.New("catalog binding mismatch")
 	}
@@ -790,6 +824,9 @@ func validScalar(format, v string) bool {
 
 func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap capability, query string, headers http.Header, body *preparedBody, resourceID string, evidence map[string]string, upstreamQuery *string, children []batchChild, authorizedUntil *time.Time, proof *responseProof) error {
 	auth, org, subject, audience, err := bearerIdentityWithOrganization(r, p.cfg, cap.OrganizationContext == "optional")
+	if c.AuthorizationMode == "user" {
+		auth, org, subject, audience, err = userBearerIdentity(r, p.cfg, cap.OrganizationContext == "optional")
+	}
 	if err != nil {
 		return decisionError{http.StatusUnauthorized, "unauthorized"}
 	}
@@ -802,6 +839,10 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 	bodyDigest := body.digest()
 	credentialDigest := credentialDigest(auth)
 	wire := map[string]any{"providerId": p.cfg.ProviderID, "pepClientId": p.cfg.PepClientID, "catalogGeneration": c.Generation, "catalogDigest": c.CatalogDigest, "capabilityId": cap.CapabilityID, "capabilityVersion": cap.Version, "contractDigest": cap.ContractDigest, "method": cap.Method, "canonicalPath": r.URL.EscapedPath(), "canonicalQuery": query, "canonicalQueryDigest": queryDigest, "forwardedHeaderDigest": headerDigest, "bodyDigest": bodyDigest, "bodyLength": body.length(), "providerCredentialDigest": credentialDigest, "providerCredential": map[string]string{"subject": subject, "audience": audience}, "resourceEvidence": evidence, "resourceType": cap.Resource.Type, "resourceId": resourceID, "requestBinding": requestBinding}
+	if c.AuthorizationMode == "user" {
+		wire["wireVersion"] = 2
+		wire["pepPolicyRevision"] = c.PepPolicyRevision
+	}
 	batchDigest := ""
 	if cap.Batch != nil {
 		batchDigest = batchChildrenDigest(children)
@@ -852,38 +893,57 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 		return decisionError{502, "dependency_unavailable"}
 	}
 	var d struct {
-		Allowed                  bool         `json:"allowed"`
-		Reason                   string       `json:"reason"`
-		ProviderID               string       `json:"providerId"`
-		PepClientID              string       `json:"pepClientId"`
-		CatalogGeneration        uint64       `json:"catalogGeneration"`
-		CatalogDigest            string       `json:"catalogDigest"`
-		CapabilityID             string       `json:"capabilityId"`
-		CapabilityVersion        uint64       `json:"capabilityVersion"`
-		ContractDigest           string       `json:"contractDigest"`
-		ActionID                 string       `json:"actionId"`
-		ResourceType             string       `json:"resourceType"`
-		ResourceID               string       `json:"resourceId"`
-		Method                   string       `json:"method"`
-		CanonicalPath            string       `json:"canonicalPath"`
-		CanonicalQueryDigest     string       `json:"canonicalQueryDigest"`
-		ForwardedHeaderDigest    string       `json:"forwardedHeaderDigest"`
-		BodyDigest               string       `json:"bodyDigest"`
-		BodyLength               int          `json:"bodyLength"`
-		ProviderCredentialDigest string       `json:"providerCredentialDigest"`
-		ProviderSubject          string       `json:"providerSubject"`
-		ProviderAudience         string       `json:"providerAudience"`
-		RequestBinding           string       `json:"requestBinding"`
-		PrincipalDigest          string       `json:"principalDigest"`
-		IssuedAt                 string       `json:"issuedAt"`
-		ExpiresAt                string       `json:"expiresAt"`
-		RecordScope              *recordScope `json:"recordScope,omitempty"`
-		BatchDigest              string       `json:"batchDigest,omitempty"`
-		ResponseDigest           string       `json:"responseDigest,omitempty"`
-		ResponseLength           uint64       `json:"responseLength,omitempty"`
-		ResponseReferencesDigest string       `json:"responseReferencesDigest,omitempty"`
+		WireVersion              json.RawMessage `json:"wireVersion,omitempty"`
+		PepPolicyRevision        json.RawMessage `json:"pepPolicyRevision,omitempty"`
+		Allowed                  bool            `json:"allowed"`
+		Reason                   string          `json:"reason"`
+		ProviderID               string          `json:"providerId"`
+		PepClientID              string          `json:"pepClientId"`
+		CatalogGeneration        uint64          `json:"catalogGeneration"`
+		CatalogDigest            string          `json:"catalogDigest"`
+		CapabilityID             string          `json:"capabilityId"`
+		CapabilityVersion        uint64          `json:"capabilityVersion"`
+		ContractDigest           string          `json:"contractDigest"`
+		ActionID                 string          `json:"actionId"`
+		ResourceType             string          `json:"resourceType"`
+		ResourceID               string          `json:"resourceId"`
+		Method                   string          `json:"method"`
+		CanonicalPath            string          `json:"canonicalPath"`
+		CanonicalQueryDigest     string          `json:"canonicalQueryDigest"`
+		ForwardedHeaderDigest    string          `json:"forwardedHeaderDigest"`
+		BodyDigest               string          `json:"bodyDigest"`
+		BodyLength               int             `json:"bodyLength"`
+		ProviderCredentialDigest string          `json:"providerCredentialDigest"`
+		ProviderSubject          string          `json:"providerSubject"`
+		ProviderAudience         string          `json:"providerAudience"`
+		RequestBinding           string          `json:"requestBinding"`
+		PrincipalDigest          string          `json:"principalDigest"`
+		IssuedAt                 string          `json:"issuedAt"`
+		ExpiresAt                string          `json:"expiresAt"`
+		RecordScope              *recordScope    `json:"recordScope,omitempty"`
+		BatchDigest              string          `json:"batchDigest,omitempty"`
+		ResponseDigest           string          `json:"responseDigest,omitempty"`
+		ResponseLength           uint64          `json:"responseLength,omitempty"`
+		ResponseReferencesDigest string          `json:"responseReferencesDigest,omitempty"`
 	}
 	if strictJSON(out, &d) != nil {
+		return decisionError{502, "dependency_unavailable"}
+	}
+	var responseFields map[string]json.RawMessage
+	if json.Unmarshal(out, &responseFields) != nil {
+		return decisionError{502, "dependency_unavailable"}
+	}
+	for key := range responseFields {
+		if (strings.EqualFold(key, "wireVersion") && key != "wireVersion") || (strings.EqualFold(key, "pepPolicyRevision") && key != "pepPolicyRevision") {
+			return decisionError{502, "dependency_unavailable"}
+		}
+	}
+	if c.AuthorizationMode == "user" {
+		var version, revision int64
+		if json.Unmarshal(d.WireVersion, &version) != nil || version != 2 || json.Unmarshal(d.PepPolicyRevision, &revision) != nil || revision != c.PepPolicyRevision {
+			return decisionError{502, "dependency_unavailable"}
+		}
+	} else if len(d.WireVersion) != 0 || len(d.PepPolicyRevision) != 0 {
 		return decisionError{502, "dependency_unavailable"}
 	}
 	if d.BatchDigest != batchDigest {
@@ -903,6 +963,12 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 	}
 	if !d.Allowed {
 		return decisionError{403, "forbidden"}
+	}
+	if proof != nil {
+		if proof.principalDigest != "" && proof.principalDigest != d.PrincipalDigest {
+			return decisionError{502, "dependency_unavailable"}
+		}
+		proof.principalDigest = d.PrincipalDigest
 	}
 	if responseDigest != "" {
 		if d.RecordScope != nil {
@@ -1239,6 +1305,40 @@ func hasCredential(r *http.Request) bool {
 func bearerIdentity(r *http.Request, cfg config.ProxyConfig) (string, string, string, string, error) {
 	return bearerIdentityWithOrganization(r, cfg, false)
 }
+
+func userBearerIdentity(r *http.Request, cfg config.ProxyConfig, allowOrgless bool) (string, string, string, string, error) {
+	if cfg.CredentialMode != "goauthy" {
+		return "", "", "", "", errors.New("user policy requires Goauthy")
+	}
+	parts := strings.Split(strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer "), ".")
+	if _, err := goauthyJWTSubject(parts); err != nil {
+		return "", "", "", "", err
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return "", "", "", "", err
+	}
+	var claims struct {
+		Audience json.RawMessage `json:"aud"`
+	}
+	if err = json.Unmarshal(payload, &claims); err != nil {
+		return "", "", "", "", err
+	}
+	var audience string
+	if json.Unmarshal(claims.Audience, &audience) != nil {
+		var audiences []string
+		if json.Unmarshal(claims.Audience, &audiences) != nil || len(audiences) != 1 {
+			return "", "", "", "", errors.New("user audience must be singular")
+		}
+		audience = audiences[0]
+	}
+	if audience == "" || strings.TrimSpace(audience) != audience || len(audience) > 512 || !utf8.ValidString(audience) || strings.IndexFunc(audience, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+		return "", "", "", "", errors.New("invalid user audience")
+	}
+	// This is only an echo hint; Grant compares it with online token evidence.
+	cfg.GoauthyApplicationID = audience
+	return bearerIdentityWithOrganization(r, cfg, allowOrgless)
+}
 func bearerIdentityWithOrganization(r *http.Request, cfg config.ProxyConfig, allowOrgless bool) (string, string, string, string, error) {
 	if len(r.Header.Values("Authorization")) != 1 || r.Header.Get("Proxy-Authorization") != "" || r.Header.Get("Cookie") != "" || r.URL.Query().Get("access_token") != "" || connectionNominates(r.Header, "Authorization") {
 		return "", "", "", "", errors.New("auth")
@@ -1256,6 +1356,9 @@ func bearerIdentityWithOrganization(r *http.Request, cfg config.ProxyConfig, all
 		return "", "", "", "", errors.New("jwt")
 	}
 	if cfg.CredentialMode == "goauthy" {
+		if cfg.GoauthyApplicationID == "" {
+			return "", "", "", "", errors.New("application audience missing")
+		}
 		subject, err := goauthyJWTSubject(parts)
 		if err != nil {
 			return "", "", "", "", err
