@@ -33,6 +33,15 @@ jobs:
           go vet ./...
           go build -o /tmp/exposure ./cmd/exposure
           docker build --check .
+          sha256sum /tmp/exposure > /tmp/exposure.sha256
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: exposure-linux-amd64-${{ github.sha }}
+          path: |
+            /tmp/exposure
+            /tmp/exposure.sha256
+          if-no-files-found: error
+          retention-days: 7
   publish:
     needs: verify
     if: false

@@ -172,8 +172,8 @@ func (c ProxyConfig) ValidateCredentialMode() error {
 			return fmt.Errorf("pocketbase issuer must be a canonical origin without a path or default port")
 		}
 	case "goauthy":
-		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyApplicationID == "" || strings.ContainsAny(c.GoauthyApplicationID, " \t\r\n") {
-			return fmt.Errorf("goauthy credential mode requires a fixed issuer and application ID")
+		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || strings.ContainsAny(c.GoauthyApplicationID, " \t\r\n") {
+			return fmt.Errorf("invalid goauthy credential configuration")
 		}
 		u, err := url.Parse(c.GoauthyIssuer)
 		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.Host != strings.ToLower(u.Host) || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" || strings.HasSuffix(u.Host, ":") || u.Port() == "443" {

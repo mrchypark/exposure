@@ -57,6 +57,36 @@ hidden management exception.
 
 ## Capability configuration
 
+### Goauthy user authorization (candidate wire version 2)
+
+An explicitly configured Grant user PEP publishes both `authorizationMode:"user"`
+and a positive int64 `pepPolicyRevision` in its catalog envelope. Exposure sends
+`wireVersion:2` and that revision on every decision and requires the exact echo.
+These envelope fields do not change catalog or capability digests: they rely on
+the authenticated private Grant transport and decision binding. Never infer the
+mode from a token or retry an executed request with a refreshed policy.
+
+This first user integration supports only the existing compact JWT-shaped
+Goauthy tokens. `sub` and exactly one `aud` (a string or one-element string array)
+are untrusted hints. Grant introspection/UserInfo, actual client/audience/scope
+validation, local membership and RBAC remain authoritative. No local signature
+verification, opaque-token support, or client hint is added. User mode does not
+require a Grant managed application. Set `EXPOSURE_CREDENTIAL_MODE=goauthy` and
+`EXPOSURE_GOAUTHY_ISSUER`; `EXPOSURE_GOAUTHY_APPLICATION_ID` may be omitted for a
+user catalog. Application catalogs still require it and retain their original
+audience and admission semantics. Missing mode/revision means legacy application;
+the legacy wire omits all new fields. Explicit policy rollback is a Grant private
+CAS operation with a new revision, never automatic token-based fallback.
+
+The CI candidate artifact `exposure-linux-amd64-<source SHA>` contains `exposure`
+and `exposure.sha256`. Run the binary without arguments (container entrypoint
+`/exposure`) with the existing capability configuration below. Candidate unit
+tests use a stub PDP and do not prove real Grant authorization or Goauthy login.
+Real Grant/Exposure tests must separately establish applications=0 allow,
+revocation denial without another upstream call, forged credential denial and
+legacy behavior. Existing 5-second decisions do not promise cancellation of
+already-running operations.
+
 Set `EXPOSURE_PROXY_ENABLED=true` and supply:
 
 - `EXPOSURE_GRANT_LEARNER_URL`: fixed Grant protocol HTTP(S) origin.

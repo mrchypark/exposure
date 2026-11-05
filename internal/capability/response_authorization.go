@@ -40,10 +40,11 @@ type responseReference struct {
 	RelationField string  `json:"relationField,omitempty"`
 }
 type responseProof struct {
-	requestBinding string
-	digest         string
-	length         uint64
-	references     []responseReference
+	requestBinding  string
+	principalDigest string
+	digest          string
+	length          uint64
+	references      []responseReference
 }
 type expansionTree map[string]expansionTree
 
