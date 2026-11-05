@@ -66,9 +66,9 @@ These envelope fields do not change catalog or capability digests: they rely on
 the authenticated private Grant transport and decision binding. Never infer the
 mode from a token or retry an executed request with a refreshed policy.
 
-This first user integration supports only the existing compact JWT-shaped
-Goauthy tokens. `sub` and exactly one `aud` (a string or one-element string array)
-are untrusted hints. Grant introspection/UserInfo, actual client/audience/scope
+This user integration supports only the existing compact JWT-shaped Goauthy
+tokens. By default, `sub` and exactly one `aud` (a string or one-element string
+array) are untrusted hints. Grant introspection/UserInfo, actual client/audience/scope
 validation, local membership and RBAC remain authoritative. No local signature
 verification, opaque-token support, or client hint is added. User mode does not
 require a Grant managed application. Set `EXPOSURE_CREDENTIAL_MODE=goauthy` and
@@ -77,6 +77,22 @@ user catalog. Application catalogs still require it and retain their original
 audience and admission semantics. Missing mode/revision means legacy application;
 the legacy wire omits all new fields. Explicit policy rollback is a Grant private
 CAS operation with a new revision, never automatic token-based fallback.
+
+For Goauthy user tokens whose JWT audience contains both the OAuth client and
+resource, operations may explicitly set both `EXPOSURE_GOAUTHY_USER_CLIENT_ID`
+and `EXPOSURE_GOAUTHY_USER_RESOURCE_AUDIENCE`. They must be distinct, nonempty
+values; a partial or invalid pair fails startup. This user-only profile requires
+an array containing exactly those two audiences in either order, without
+duplicates or extras, plus exact `azp` equal to the configured client and `iss`
+equal to `EXPOSURE_GOAUTHY_ISSUER`. Missing, aliased or mismatched claims fail
+closed with no fallback to the default profile. The PDP audience hint is the
+configured resource; the original bearer and existing decision digests are
+unchanged. These are local consistency hints, not signature or identity proof:
+Grant independently validates online client/resource/scope evidence and UserInfo.
+Operators must confirm that both configured values match that online contract.
+The pair creates no OAuth client or managed application and does not change
+legacy application audience/admission behavior. Leave both values unset to keep
+the strict-single-audience profile, including existing same-value singleton cases.
 
 The CI candidate artifact `exposure-linux-amd64-<source SHA>` contains `exposure`
 and `exposure.sha256`. Run the binary without arguments (container entrypoint

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
@@ -33,6 +34,7 @@ type ProxyConfig struct {
 	CredentialMode, PocketBaseCollectionID                             string
 	PocketBaseIssuer, PocketBaseApplicationID                          string
 	GoauthyIssuer, GoauthyApplicationID                                string
+	GoauthyUserClientID, GoauthyUserResourceAudience                   string
 	MaxRequestBytes, MaxResponseBytes                                  int64
 	PublicAuthnGlobalCapacity, PublicAuthnPeerCapacity                 int
 	PublicAuthnGlobalRefill, PublicAuthnPeerRefill                     time.Duration
@@ -73,6 +75,7 @@ func Load() (Config, error) {
 		CredentialMode: env("EXPOSURE_CREDENTIAL_MODE", "rauthy"), PocketBaseCollectionID: os.Getenv("EXPOSURE_POCKETBASE_COLLECTION_ID"),
 		PocketBaseIssuer: os.Getenv("EXPOSURE_POCKETBASE_ISSUER"), PocketBaseApplicationID: os.Getenv("EXPOSURE_POCKETBASE_APPLICATION_ID"),
 		GoauthyIssuer: os.Getenv("EXPOSURE_GOAUTHY_ISSUER"), GoauthyApplicationID: os.Getenv("EXPOSURE_GOAUTHY_APPLICATION_ID"),
+		GoauthyUserClientID: os.Getenv("EXPOSURE_GOAUTHY_USER_CLIENT_ID"), GoauthyUserResourceAudience: os.Getenv("EXPOSURE_GOAUTHY_USER_RESOURCE_AUDIENCE"),
 		MaxRequestBytes: int64(c.MaxResponseBytes), MaxResponseBytes: int64(c.MaxResponseBytes),
 		PublicAuthnGlobalCapacity: 64, PublicAuthnPeerCapacity: 8, PublicAuthnGlobalRefill: time.Second, PublicAuthnPeerRefill: time.Second,
 	}
@@ -155,6 +158,19 @@ func (c ProxyConfig) ValidateUpstreamAuthorization() error {
 }
 
 func (c ProxyConfig) ValidateCredentialMode() error {
+	if c.GoauthyUserClientID != "" || c.GoauthyUserResourceAudience != "" {
+		if c.CredentialMode != "goauthy" {
+			return fmt.Errorf("Goauthy user profile requires goauthy credential mode")
+		}
+		if c.GoauthyUserClientID == c.GoauthyUserResourceAudience {
+			return fmt.Errorf("Goauthy user profile requires distinct client and resource metadata")
+		}
+		for _, value := range []string{c.GoauthyUserClientID, c.GoauthyUserResourceAudience} {
+			if value == "" || len(value) > 512 || !utf8.ValidString(value) || strings.TrimSpace(value) != value || strings.IndexFunc(value, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+				return fmt.Errorf("Goauthy user profile requires valid client and resource metadata")
+			}
+		}
+	}
 	switch c.CredentialMode {
 	case "", "rauthy":
 		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" {
