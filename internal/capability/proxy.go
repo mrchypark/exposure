@@ -1325,7 +1325,34 @@ func userBearerIdentity(r *http.Request, cfg config.ProxyConfig, allowOrgless bo
 		return "", "", "", "", err
 	}
 	var audience string
-	if json.Unmarshal(claims.Audience, &audience) != nil {
+	if cfg.GoauthyUserClientID != "" || cfg.GoauthyUserResourceAudience != "" {
+		var fields map[string]json.RawMessage
+		if json.Unmarshal(payload, &fields) != nil || cfg.GoauthyUserClientID == "" || cfg.GoauthyUserResourceAudience == "" || cfg.GoauthyUserClientID == cfg.GoauthyUserResourceAudience {
+			return "", "", "", "", errors.New("invalid user profile")
+		}
+		for key := range fields {
+			for _, name := range []string{"aud", "azp", "iss"} {
+				if strings.EqualFold(key, name) && key != name {
+					return "", "", "", "", errors.New("invalid profile claim spelling")
+				}
+			}
+		}
+		var issuer, client string
+		if json.Unmarshal(fields["iss"], &issuer) != nil || issuer != cfg.GoauthyIssuer || json.Unmarshal(fields["azp"], &client) != nil || client != cfg.GoauthyUserClientID {
+			return "", "", "", "", errors.New("user profile issuer or client mismatch")
+		}
+		var audiences []string
+		if json.Unmarshal(fields["aud"], &audiences) != nil {
+			return "", "", "", "", errors.New("invalid profile audience")
+		}
+		if len(audiences) != 2 {
+			return "", "", "", "", errors.New("user profile audience count mismatch")
+		}
+		if !((audiences[0] == cfg.GoauthyUserClientID && audiences[1] == cfg.GoauthyUserResourceAudience) || (audiences[1] == cfg.GoauthyUserClientID && audiences[0] == cfg.GoauthyUserResourceAudience)) {
+			return "", "", "", "", errors.New("user profile audience set mismatch")
+		}
+		audience = cfg.GoauthyUserResourceAudience
+	} else if json.Unmarshal(claims.Audience, &audience) != nil {
 		var audiences []string
 		if json.Unmarshal(claims.Audience, &audiences) != nil || len(audiences) != 1 {
 			return "", "", "", "", errors.New("user audience must be singular")
