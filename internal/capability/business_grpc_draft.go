@@ -1,7 +1,6 @@
 package capability
 
-// This isolated draft is intentionally not registered by the application.
-// Callers must provide an already configured, trusted upstream connection.
+// This draft is restricted to an explicitly configured loopback test listener.
 import (
 	"context"
 	"crypto/rand"
@@ -46,8 +45,8 @@ func (rawRPCCodec) Unmarshal(b []byte, v any) error {
 	return nil
 }
 
-// businessDraft owns no listener and is available only for isolated tests.
-// Production startup and upstream authentication are explicitly undecided.
+// businessDraft supports isolated tests only. Upstream authentication is not
+// implemented and it must not be used across a production trust boundary.
 type businessDraft struct {
 	proxy       *Proxy
 	upstream    *grpc.ClientConn

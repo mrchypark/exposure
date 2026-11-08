@@ -7,9 +7,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"net"
+	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -29,6 +32,7 @@ import (
 type businessTestPDP struct {
 	pdppb.UnimplementedPolicyDecisionPointServer
 	catalog       []byte
+	catalogMu     sync.RWMutex
 	mode          string
 	t             *testing.T
 	expected      map[string]any
@@ -39,7 +43,14 @@ type businessTestPDP struct {
 
 func (p *businessTestPDP) GetGrpcCatalog(context.Context, *pdppb.CatalogRequest) (*pdppb.CatalogResponse, error) {
 	p.catalogCalls.Add(1)
-	return &pdppb.CatalogResponse{CatalogJson: p.catalog}, nil
+	p.catalogMu.RLock()
+	defer p.catalogMu.RUnlock()
+	return &pdppb.CatalogResponse{CatalogJson: append([]byte(nil), p.catalog...)}, nil
+}
+func (p *businessTestPDP) setCatalog(b []byte) {
+	p.catalogMu.Lock()
+	defer p.catalogMu.Unlock()
+	p.catalog = append([]byte(nil), b...)
 }
 func (p *businessTestPDP) DecideGrpc(ctx context.Context, in *pdppb.DecisionRequest) (*pdppb.DecisionResponse, error) {
 	p.decisionCalls.Add(1)
@@ -96,7 +107,7 @@ func TestBusinessDraftUnaryForwarding(t *testing.T) {
 			cat := businessCatalog{SchemaVersion: 1, ProviderID: "provider", Generation: 1, Capabilities: []businessCapability{cap}, PepClientID: "pep", AuthorizationMode: "user", PepPolicyRevision: 7, IssuedAt: now.Format(time.RFC3339Nano), ExpiresAt: now.Add(25 * time.Second).Format(time.RFC3339Nano)}
 			cat.CatalogDigest, _ = businessCatalogDigest(cat)
 			catalogBytes, _ := json.Marshal(cat)
-			authorization := "Bearer " + goauthyJWT(t, `{"sub":"user","aud":"audience"}`)
+			authorization := "Bearer " + goauthyJWT(t, `{"iss":"https://issuer.example","sub":"user","aud":["client","audience"],"azp":"client"}`)
 			preimage := append([]byte("grant.http-capability.provider-credential.v1"), make([]byte, 8)...)
 			binary.BigEndian.PutUint64(preimage[len(preimage)-8:], uint64(len(authorization)))
 			credentialHash := sha256.Sum256(append(preimage, []byte(authorization)...))
@@ -110,7 +121,7 @@ func TestBusinessDraftUnaryForwarding(t *testing.T) {
 			pdppb.RegisterPolicyDecisionPointServer(pdp, fixturePDP)
 			go pdp.Serve(pdpListener)
 			t.Cleanup(func() { pdp.Stop(); pdpListener.Close() })
-			p := &Proxy{cfg: config.ProxyConfig{CredentialMode: "goauthy", GoauthyIssuer: "https://issuer.example", ProviderID: "provider", PepClientID: "pep", AppAuthKey: "test"}}
+			p := &Proxy{cfg: config.ProxyConfig{CredentialMode: "goauthy", GoauthyIssuer: "https://issuer.example", GoauthyUserClientID: "client", GoauthyUserResourceAudience: "audience", ProviderID: "provider", PepClientID: "pep", AppAuthKey: "test"}}
 			if err := p.ConfigureGRPCLearner(pdpListener.Addr().String(), "", "", 2*time.Second); err != nil {
 				t.Fatal(err)
 			}
@@ -143,22 +154,27 @@ func TestBusinessDraftUnaryForwarding(t *testing.T) {
 			}))
 			go upstream.Serve(upstreamListener)
 			t.Cleanup(func() { upstream.Stop(); upstreamListener.Close() })
-			d, err := newBusinessDraft(p, upstreamListener.Addr().String(), map[string][]byte{cap.DescriptorDigest: descBytes}, map[string]businessCapability{cap.FullMethod: cap}, cat.CatalogDigest, 1024)
+			reserved, err := net.Listen("tcp", "127.0.0.1:0")
 			if err != nil {
 				t.Fatal(err)
 			}
-			t.Cleanup(func() { d.upstream.Close() })
-			listener, err := net.Listen("tcp", "127.0.0.1:0")
+			t.Cleanup(func() { reserved.Close() })
+			file := businessFile{Listen: reserved.Addr().String(), Upstream: upstreamListener.Addr().String(), CatalogDigest: cat.CatalogDigest, MaxMessageBytes: 1024, Methods: []businessFileMethod{{Capability: cap, Descriptor: descBytes}}}
+			fileBytes, err := json.Marshal(file)
 			if err != nil {
 				t.Fatal(err)
 			}
-			server, err := d.newServer()
+			path := filepath.Join(t.TempDir(), "business.json")
+			if err := os.WriteFile(path, fileBytes, 0600); err != nil {
+				t.Fatal(err)
+			}
+			server, err := p.newBusinessServer(path, reserved)
 			if err != nil {
 				t.Fatal(err)
 			}
-			go server.Serve(listener)
-			t.Cleanup(func() { server.Stop(); listener.Close() })
-			client, err := grpc.NewClient("passthrough:///"+listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDisableRetry(), grpc.WithDisableServiceConfig())
+			go server.Serve()
+			t.Cleanup(server.Close)
+			client, err := grpc.NewClient("passthrough:///"+server.listener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDisableRetry(), grpc.WithDisableServiceConfig())
 			if err != nil {
 				t.Fatal(err)
 			}
