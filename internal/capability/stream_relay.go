@@ -45,15 +45,16 @@ type streamPilot struct {
 	selectors   []string
 	fixed       map[string]string
 	limit       int
+	maxFrames   int
 	sem         chan struct{}
 }
 
-func newStreamPilot(p *Proxy, target, method string, descriptor []byte, digest, provider, org, action, resource, resourceKey string, selectors []string, fixed map[string]string, limit int) (*streamPilot, error) {
+func newStreamPilot(p *Proxy, target, method string, descriptor []byte, digest, provider, org, action, resource, resourceKey string, selectors []string, fixed map[string]string, limit, maxFrames int) (*streamPilot, error) {
 	if !loopbackAddress(target, false) ||
 		p == nil || p.learner == nil || p.learner.timeout <= 0 || provider == "" || provider != p.cfg.ProviderID || p.cfg.AppAuthKey == "" ||
 		p.cfg.CredentialMode != "goauthy" || p.cfg.GoauthyUserClientID == "" || p.cfg.GoauthyUserResourceAudience == "" ||
 		org == "" || action == "" || resource == "" ||
-		limit <= 0 || limit > streamResponseWireMax || len(selectors) == 0 || len(selectors) > 8 || len(fixed) == 0 {
+		limit <= 0 || limit > streamResponseWireMax || maxFrames <= 0 || maxFrames > streamMaxFrames || len(selectors) == 0 || len(selectors) > 8 || len(fixed) == 0 {
 		return nil, errors.New("invalid isolated stream configuration")
 	}
 	if shaBytes(descriptor) != digest || !serverStreamMethod(descriptor, method) {
@@ -87,7 +88,7 @@ func newStreamPilot(p *Proxy, target, method string, descriptor []byte, digest, 
 	if err != nil {
 		return nil, err
 	}
-	return &streamPilot{proxy: p, upstream: conn, method: method, provider: provider, org: org, action: action, resource: resource, resourceKey: resourceKey, selectors: append([]string(nil), selectors...), fixed: fixedCopy, limit: limit, sem: make(chan struct{}, 16)}, nil
+	return &streamPilot{proxy: p, upstream: conn, method: method, provider: provider, org: org, action: action, resource: resource, resourceKey: resourceKey, selectors: append([]string(nil), selectors...), fixed: fixedCopy, limit: limit, maxFrames: maxFrames, sem: make(chan struct{}, 16)}, nil
 }
 
 func serverStreamMethod(raw []byte, method string) bool {
@@ -228,7 +229,7 @@ func (s *streamPilot) handler(_ any, stream grpc.ServerStream) error {
 			return status.Error(codes.Unavailable, "upstream unavailable")
 		}
 		frames++
-		if frames > streamMaxFrames || len(frame) > streamFrameWireMax || len(frame) > s.limit-total {
+		if frames > s.maxFrames || len(frame) > streamFrameWireMax || len(frame) > s.limit-total {
 			return status.Error(codes.ResourceExhausted, "response too large")
 		}
 		total += len(frame)

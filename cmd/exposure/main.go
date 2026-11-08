@@ -118,6 +118,14 @@ func runCapabilityProxy(cfg config.Config) error {
 		}
 		defer business.Close()
 	}
+	var stream *capability.StreamServer
+	if cfg.StreamGRPCFile != "" {
+		stream, err = p.NewStreamServer(cfg.StreamGRPCFile)
+		if err != nil {
+			return err
+		}
+		defer stream.Close()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	refresh := func() {
@@ -139,8 +147,8 @@ func runCapabilityProxy(cfg config.Config) error {
 		}
 	}()
 	data := &http.Server{Addr: cfg.Proxy.DataAddr, Handler: p.Handler(), ReadHeaderTimeout: cfg.ReadHeaderTimeout, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, MaxHeaderBytes: cfg.MaxHeaderBytes}
-	admin := &http.Server{Addr: cfg.Proxy.AdminAddr, Handler: proxyAdmin(p, business), ReadHeaderTimeout: cfg.ReadHeaderTimeout, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, MaxHeaderBytes: cfg.MaxHeaderBytes}
-	errs := make(chan error, 3)
+	admin := &http.Server{Addr: cfg.Proxy.AdminAddr, Handler: proxyAdmin(p, business, stream), ReadHeaderTimeout: cfg.ReadHeaderTimeout, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, MaxHeaderBytes: cfg.MaxHeaderBytes}
+	errs := make(chan error, 4)
 	serve := func(s *http.Server) {
 		ln, e := net.Listen("tcp", s.Addr)
 		if e != nil {
@@ -154,12 +162,18 @@ func runCapabilityProxy(cfg config.Config) error {
 	if business != nil {
 		go func() { errs <- business.Serve() }()
 	}
+	if stream != nil {
+		go func() { errs <- stream.Serve() }()
+	}
 	select {
 	case err = <-errs:
 	case <-ctx.Done():
 	}
 	if business != nil {
 		business.Close()
+	}
+	if stream != nil {
+		stream.Close()
 	}
 	shutdown, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
@@ -177,7 +191,7 @@ func runCapabilityProxy(cfg config.Config) error {
 	return nil
 }
 
-func proxyAdmin(p *capability.Proxy, business *capability.BusinessServer) http.Handler {
+func proxyAdmin(p *capability.Proxy, business *capability.BusinessServer, stream *capability.StreamServer) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -192,6 +206,17 @@ func proxyAdmin(p *capability.Proxy, business *capability.BusinessServer) http.H
 		}
 		_, _ = w.Write([]byte(`{"ready":true}`))
 	})
+	if stream != nil {
+		m.HandleFunc("GET /stream-healthz", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			if !stream.Listening() {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				_, _ = w.Write([]byte(`{"listening":false}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"listening":true}`))
+		})
+	}
 	return m
 }
 

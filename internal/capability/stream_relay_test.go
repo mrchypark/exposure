@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"io"
 	"net"
+	"os"
+	"path/filepath"
 	"reflect"
 	"sync/atomic"
 	"testing"
@@ -103,6 +105,7 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 		{"max-content", 5, 6, 1, true},
 		{"wire-cap-exceeded", 5, 6, 1, false},
 		{"frame-cap-exceeded", 1, 2, 1, false},
+		{"frame-count-exceeded", 1, 2, 1, false},
 		{"request-cap-exceeded", 0, 0, 0, false},
 		{"client-cancel", 1, 2, 1, false},
 		{"upstream-stall", 0, 1, 1, false},
@@ -205,18 +208,34 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			}))
 			go up.Serve(upListener)
 			t.Cleanup(func() { up.Stop(); upListener.Close() })
-			relay, err := newStreamPilot(p, upListener.Addr().String(), "/sample.Service/Read", rawDesc, shaBytes(rawDesc), "provider", "org", "read", "page", "x-page", []string{"x-scope", "x-page", "x-version"}, map[string]string{"x-scope": "workspace"}, streamResponseWireMax)
-			if err != nil {
-				t.Fatal(err)
-			}
-			t.Cleanup(func() { relay.upstream.Close() })
 			relayListener, err := net.Listen("tcp", "127.0.0.1:0")
 			if err != nil {
 				t.Fatal(err)
 			}
-			server := relay.server()
-			go server.Serve(relayListener)
-			t.Cleanup(func() { server.Stop(); relayListener.Close() })
+			t.Cleanup(func() { relayListener.Close() })
+			maxFrames := streamMaxFrames
+			if tc.mode == "frame-count-exceeded" {
+				maxFrames = 1
+			}
+			if tc.mode == "max-content" {
+				maxFrames = 5
+			}
+			cfg := streamFile{Listen: relayListener.Addr().String(), Upstream: upListener.Addr().String(), Method: "/sample.Service/Read", Descriptor: rawDesc, DescriptorDigest: shaBytes(rawDesc), Organization: "org", Action: "read", ResourceType: "page", ResourceSelector: "x-page", Selectors: []string{"x-scope", "x-page", "x-version"}, FixedSelectors: map[string]string{"x-scope": "workspace"}, MaxWireBytes: streamResponseWireMax, MaxFrames: maxFrames}
+			cfgBytes, err := json.Marshal(cfg)
+			if err != nil {
+				t.Fatal(err)
+			}
+			configPath := filepath.Join(t.TempDir(), "stream.json")
+			if err := os.WriteFile(configPath, cfgBytes, 0600); err != nil {
+				t.Fatal(err)
+			}
+			server, err := p.newStreamServer(configPath, relayListener)
+			if err != nil {
+				t.Fatal(err)
+			}
+			relay := server.relay
+			go server.Serve()
+			t.Cleanup(server.Close)
 			client, err := grpc.NewClient("passthrough:///"+relayListener.Addr().String(), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithDisableRetry(), grpc.WithInitialWindowSize(65536), grpc.WithInitialConnWindowSize(65536))
 			if err != nil {
 				t.Fatal(err)
