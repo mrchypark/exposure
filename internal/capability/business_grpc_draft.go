@@ -132,7 +132,9 @@ func (d *businessDraft) handler(_ any, stream grpc.ServerStream) error {
 	}
 	for k, values := range md {
 		switch k {
-		case ":authority", "content-type", "user-agent":
+		// grpc-go exposes the client's response-compression advertisement as
+		// metadata. It is untrusted, ignored and never forwarded upstream.
+		case ":authority", "content-type", "user-agent", "grpc-accept-encoding":
 		case "authorization", "x-organization-id":
 			if len(values) != 1 {
 				return status.Error(codes.Unauthenticated, "unauthorized")

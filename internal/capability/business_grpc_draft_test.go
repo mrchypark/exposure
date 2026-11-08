@@ -83,7 +83,7 @@ func TestBusinessDraftUnaryForwarding(t *testing.T) {
 		mode        string
 		wantCalls   int64
 		wantSuccess bool
-	}{{"allow", 1, true}, {"deny", 0, false}, {"tamper", 0, false}, {"expired", 0, false}, {"metadata", 0, false}, {"duplicate", 0, false}, {"compression", 0, false}, {"upstream", 1, false}, {"longdeadline", 0, false}, {"nodeadline", 0, false}, {"nohalfclose", 0, false}, {"oversize", 0, false}, {"twomessages", 0, false}} {
+	}{{"allow", 1, true}, {"advertisement", 1, true}, {"deny", 0, false}, {"tamper", 0, false}, {"expired", 0, false}, {"metadata", 0, false}, {"duplicate", 0, false}, {"compression", 0, false}, {"upstream", 1, false}, {"longdeadline", 0, false}, {"nodeadline", 0, false}, {"nohalfclose", 0, false}, {"oversize", 0, false}, {"twomessages", 0, false}} {
 		t.Run(tc.mode, func(t *testing.T) {
 			desc := &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{{Name: proto.String("fixture.proto"), Package: proto.String("fixture"), Syntax: proto.String("proto3"), MessageType: []*descriptorpb.DescriptorProto{{Name: proto.String("Request")}, {Name: proto.String("Response")}}, Service: []*descriptorpb.ServiceDescriptorProto{{Name: proto.String("Service"), Method: []*descriptorpb.MethodDescriptorProto{{Name: proto.String("Get"), InputType: proto.String(".fixture.Request"), OutputType: proto.String(".fixture.Response")}}}}}}}
 			descBytes, err := proto.Marshal(desc)
@@ -124,6 +124,9 @@ func TestBusinessDraftUnaryForwarding(t *testing.T) {
 				incoming, _ := metadata.FromIncomingContext(s.Context())
 				if len(incoming.Get("authorization")) != 0 || len(incoming.Get("x-grant-app-auth-key")) != 0 || len(incoming.Get("x-organization-id")) != 0 {
 					t.Error("credentials forwarded")
+				}
+				if strings.Contains(strings.Join(incoming.Get("grpc-accept-encoding"), ","), "untrusted-fixture") {
+					t.Error("client advertisement forwarded")
 				}
 				var b []byte
 				if err := s.RecvMsg(&b); err != nil {
@@ -182,6 +185,9 @@ func TestBusinessDraftUnaryForwarding(t *testing.T) {
 			}
 			if tc.mode == "duplicate" {
 				values.Append("authorization", "Bearer other")
+			}
+			if tc.mode == "advertisement" {
+				values.Append("grpc-accept-encoding", "untrusted-fixture")
 			}
 			ctx = metadata.NewOutgoingContext(ctx, values)
 			request := []byte{0x0a, 0x01, 0x78}
