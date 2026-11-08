@@ -135,7 +135,7 @@ timeout; it does not prove upstream service health.
 For an isolated server-streaming proof, set `EXPOSURE_STREAM_GRPC_FILE` to a
 startup-only regular JSON file. It is disabled by default and requires proxy
 mode, a gRPC learner, and the explicit Goauthy USER client/resource profile.
-The closed object has `listen`, `upstream`, `method`, `descriptor`,
+The closed object requires `scope: "single-object"`, `listen`, `upstream`, `method`, `descriptor`,
 `descriptorDigest`, `organization`, `action`, `resourceType`,
 `resourceSelector`, `selectors`, `fixedSelectors`, `maxWireBytes`, and
 `maxFrames`. The descriptor is a base64-encoded serialized FileDescriptorSet;
@@ -154,8 +154,18 @@ response bytes to the configured `maxWireBytes` (at most 256 KiB plus 16 KiB
 overhead), and frames to `maxFrames` (1–4096). A pilot may configure five
 frames. The trusted upstream adapter, not this generic relay, verifies raw
 content size and integrity before emitting its first frame. The relay sends no
-user Bearer, organization, or Grant key to that adapter; it checks Grant before
-opening the upstream and before every frame. `/readyz` retains its existing HTTP
+user Bearer, organization, or Grant key to that adapter. It checks Grant once
+before opening the upstream; revocation after admission affects the next call,
+not the transfer already admitted. This policy is only for a single verified
+object, never a multi-object stream. The operator must pin the reviewed exact
+method, descriptor and fixed loopback upstream to a separately verified,
+service-owned single-object adapter. The scope field is an assertion, not
+proof of adapter semantics or executable identity. Configuring any other
+compatible multi-object service would not automatically protect its objects.
+The trusted adapter must verify the entire object and its published identity
+before emitting any frame. It must bind the returned object to the exact
+resource selector authorized by Grant and reject conflicts with the request
+body. `/readyz` retains its existing HTTP
 readiness meaning and does not indicate stream readiness. When enabled,
 `/stream-healthz` indicates only whether the stream listener is serving; it
 does not prove Grant batch-method support, adapter health, or authorization.

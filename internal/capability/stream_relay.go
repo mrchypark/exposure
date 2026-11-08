@@ -200,8 +200,7 @@ func (s *streamPilot) handler(_ any, stream grpc.ServerStream) error {
 	}
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
-	revision := int64(0)
-	if err := s.check(ctx, auth, org, out.Get(s.resourceKey)[0], &revision); err != nil {
+	if err := s.check(ctx, auth, org, out.Get(s.resourceKey)[0]); err != nil {
 		return err
 	}
 	if err := ctx.Err(); err != nil {
@@ -233,9 +232,6 @@ func (s *streamPilot) handler(_ any, stream grpc.ServerStream) error {
 			return status.Error(codes.ResourceExhausted, "response too large")
 		}
 		total += len(frame)
-		if err := s.check(ctx, auth, org, out.Get(s.resourceKey)[0], &revision); err != nil {
-			return err
-		}
 		if err := ctx.Err(); err != nil {
 			return status.Error(codes.Canceled, "canceled")
 		}
@@ -245,7 +241,7 @@ func (s *streamPilot) handler(_ any, stream grpc.ServerStream) error {
 	}
 }
 
-func (s *streamPilot) check(ctx context.Context, auth, org, resourceID string, revision *int64) error {
+func (s *streamPilot) check(ctx context.Context, auth, org, resourceID string) error {
 	body, err := json.Marshal(map[string]any{"checks": []any{map[string]any{"action": s.action, "resource": map[string]string{"provider": s.provider, "type": s.resource, "id": resourceID}}}})
 	if err != nil {
 		return status.Error(codes.Unavailable, "unavailable")
@@ -272,10 +268,9 @@ func (s *streamPilot) check(ctx context.Context, auth, org, resourceID string, r
 		} `json:"results"`
 		PepPolicyRevision int64 `json:"pepPolicyRevision"`
 	}
-	if strictJSON(resp.GetDecisionJson(), &result) != nil || len(result.Results) != 1 || result.PepPolicyRevision <= 0 || result.Results[0].Reason == "" || (*revision != 0 && *revision != result.PepPolicyRevision) {
+	if strictJSON(resp.GetDecisionJson(), &result) != nil || len(result.Results) != 1 || result.PepPolicyRevision <= 0 || result.Results[0].Reason == "" {
 		return status.Error(codes.Unavailable, "authorization unavailable")
 	}
-	*revision = result.PepPolicyRevision
 	if !result.Results[0].Allowed {
 		return status.Error(codes.PermissionDenied, "denied")
 	}

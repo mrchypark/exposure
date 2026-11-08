@@ -17,6 +17,7 @@ import (
 // streamFile is an operator-reviewed, immutable pilot configuration. The
 // upstream service, not this generic relay, verifies the object's raw size.
 type streamFile struct {
+	Scope            string            `json:"scope"`
 	Listen           string            `json:"listen"`
 	Upstream         string            `json:"upstream"`
 	Method           string            `json:"method"`
@@ -67,11 +68,11 @@ func (p *Proxy) newStreamServer(path string, reserved net.Listener) (*StreamServ
 		return nil, errors.New("invalid stream configuration")
 	}
 	var fields map[string]json.RawMessage
-	if json.Unmarshal(b, &fields) != nil || !exactKeys(fields, "listen", "upstream", "method", "descriptor", "descriptorDigest", "organization", "action", "resourceType", "resourceSelector", "selectors", "fixedSelectors", "maxWireBytes", "maxFrames") {
+	if json.Unmarshal(b, &fields) != nil || !exactKeys(fields, "scope", "listen", "upstream", "method", "descriptor", "descriptorDigest", "organization", "action", "resourceType", "resourceSelector", "selectors", "fixedSelectors", "maxWireBytes", "maxFrames") {
 		return nil, errors.New("invalid stream configuration fields")
 	}
 	var c streamFile
-	if strictJSON(b, &c) != nil || !loopbackAddress(c.Listen, false) || !loopbackAddress(c.Upstream, false) || c.Listen == c.Upstream {
+	if strictJSON(b, &c) != nil || c.Scope != "single-object" || !loopbackAddress(c.Listen, false) || !loopbackAddress(c.Upstream, false) || c.Listen == c.Upstream {
 		return nil, errors.New("invalid stream configuration values")
 	}
 	relay, err := newStreamPilot(p, c.Upstream, c.Method, c.Descriptor, c.DescriptorDigest, p.cfg.ProviderID, c.Organization, c.Action, c.ResourceType, c.ResourceSelector, c.Selectors, c.FixedSelectors, c.MaxWireBytes, c.MaxFrames)

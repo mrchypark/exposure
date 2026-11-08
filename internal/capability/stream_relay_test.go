@@ -26,10 +26,11 @@ import (
 
 type streamTestPDP struct {
 	pdppb.UnimplementedPolicyDecisionPointServer
-	t     *testing.T
-	auth  string
-	mode  string
-	calls atomic.Int64
+	t       *testing.T
+	auth    string
+	mode    string
+	calls   atomic.Int64
+	revoked atomic.Bool
 }
 
 func (p *streamTestPDP) BatchCheckProviderUser(ctx context.Context, in *pdppb.ProviderUserBatchRequest) (*pdppb.DecisionResponse, error) {
@@ -43,13 +44,13 @@ func (p *streamTestPDP) BatchCheckProviderUser(ctx context.Context, in *pdppb.Pr
 	if p.mode == "unimplemented" {
 		return nil, status.Error(codes.Unimplemented, "fixture")
 	}
-	if p.mode == "unavailable" && n == 3 {
+	if p.mode == "unavailable" && n == 1 {
 		return nil, status.Error(codes.Unavailable, "fixture")
 	}
-	allowed := !(p.mode == "deny-first" && n == 1 || p.mode == "deny-last" && n == 3)
+	allowed := p.mode != "deny-first" && !p.revoked.Load()
 	revision := int64(7)
-	if p.mode == "revision" && n == 3 {
-		revision++
+	if p.mode == "invalid-revision" {
+		revision = 0
 	}
 	if p.mode == "malformed" && n == 1 {
 		return &pdppb.DecisionResponse{DecisionJson: []byte(`{"results":[],"pepPolicyRevision":7}`)}, nil
@@ -73,7 +74,7 @@ func (p *streamTestPDP) BatchCheckProviderUser(ctx context.Context, in *pdppb.Pr
 	return &pdppb.DecisionResponse{DecisionJson: b}, nil
 }
 
-func TestStreamPilotPerFrameAuthorization(t *testing.T) {
+func TestStreamPilotAdmissionAuthorization(t *testing.T) {
 	for _, tc := range []struct {
 		mode        string
 		wantFrames  int
@@ -81,12 +82,12 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 		wantCalls   int64
 		wantSuccess bool
 	}{
-		{"allow", 2, 3, 1, true},
+		{"allow", 2, 1, 1, true},
 		{"deny-first", 0, 1, 0, false},
-		{"deny-last", 1, 3, 1, false},
-		{"revision", 1, 3, 1, false},
-		{"unavailable", 1, 3, 1, false},
-		{"upstream-error", 1, 2, 1, false},
+		{"revoke-after-data", 3, 1, 1, true},
+		{"invalid-revision", 0, 1, 0, false},
+		{"unavailable", 0, 1, 0, false},
+		{"upstream-error", 1, 1, 1, false},
 		{"unimplemented", 0, 1, 0, false},
 		{"malformed", 0, 1, 0, false},
 		{"alias-deny-first", 0, 1, 0, false},
@@ -101,18 +102,19 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 		{"no-half-close", 0, 0, 0, false},
 		{"two-requests", 0, 0, 0, false},
 		{"wrong-method", 0, 0, 0, false},
+		{"other-streaming-method", 0, 0, 0, false},
 		{"empty-stream", 0, 1, 1, false},
-		{"max-content", 5, 6, 1, true},
-		{"wire-cap-exceeded", 5, 6, 1, false},
-		{"frame-cap-exceeded", 1, 2, 1, false},
-		{"frame-count-exceeded", 1, 2, 1, false},
+		{"max-content", 5, 1, 1, true},
+		{"wire-cap-exceeded", 5, 1, 1, false},
+		{"frame-cap-exceeded", 1, 1, 1, false},
+		{"frame-count-exceeded", 1, 1, 1, false},
 		{"request-cap-exceeded", 0, 0, 0, false},
-		{"client-cancel", 1, 2, 1, false},
+		{"client-cancel", 1, 1, 1, false},
 		{"upstream-stall", 0, 1, 1, false},
 		{"backpressure", 0, 0, 0, false},
 	} {
 		t.Run(tc.mode, func(t *testing.T) {
-			desc := &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{{Name: proto.String("sample.proto"), Package: proto.String("sample"), Syntax: proto.String("proto3"), MessageType: []*descriptorpb.DescriptorProto{{Name: proto.String("Request")}, {Name: proto.String("Response")}}, Service: []*descriptorpb.ServiceDescriptorProto{{Name: proto.String("Service"), Method: []*descriptorpb.MethodDescriptorProto{{Name: proto.String("Read"), InputType: proto.String(".sample.Request"), OutputType: proto.String(".sample.Response"), ServerStreaming: proto.Bool(true)}}}}}}}
+			desc := &descriptorpb.FileDescriptorSet{File: []*descriptorpb.FileDescriptorProto{{Name: proto.String("sample.proto"), Package: proto.String("sample"), Syntax: proto.String("proto3"), MessageType: []*descriptorpb.DescriptorProto{{Name: proto.String("Request")}, {Name: proto.String("Response")}}, Service: []*descriptorpb.ServiceDescriptorProto{{Name: proto.String("Service"), Method: []*descriptorpb.MethodDescriptorProto{{Name: proto.String("Read"), InputType: proto.String(".sample.Request"), OutputType: proto.String(".sample.Response"), ServerStreaming: proto.Bool(true)}, {Name: proto.String("List"), InputType: proto.String(".sample.Request"), OutputType: proto.String(".sample.Response"), ServerStreaming: proto.Bool(true)}}}}}}}
 			rawDesc, err := proto.Marshal(desc)
 			if err != nil {
 				t.Fatal(err)
@@ -138,9 +140,10 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			}
 			var upstreamCalls atomic.Int64
 			canceled := make(chan struct{}, 1)
+			resume := make(chan struct{})
 			up := grpc.NewServer(grpc.ForceServerCodec(rawRPCCodec{}), grpc.UnknownServiceHandler(func(_ any, stream grpc.ServerStream) error {
 				upstreamCalls.Add(1)
-				if tc.mode == "deny-last" || tc.mode == "revision" || tc.mode == "unavailable" || tc.mode == "client-cancel" || tc.mode == "upstream-stall" || tc.mode == "backpressure" {
+				if tc.mode == "client-cancel" || tc.mode == "upstream-stall" || tc.mode == "backpressure" {
 					defer func() {
 						<-stream.Context().Done()
 						canceled <- struct{}{}
@@ -177,6 +180,9 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 					return nil
 				}
 				framesToSend := [][]byte{[]byte("header"), []byte("data")}
+				if tc.mode == "revoke-after-data" {
+					framesToSend = append(framesToSend, []byte("tail"))
+				}
 				if tc.mode == "client-cancel" {
 					framesToSend = framesToSend[:1]
 				}
@@ -197,11 +203,18 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 					if err := stream.SendMsg(&frame); err != nil {
 						return err
 					}
+					if tc.mode == "revoke-after-data" && i == 1 {
+						select {
+						case <-resume:
+						case <-stream.Context().Done():
+							return stream.Context().Err()
+						}
+					}
 					if tc.mode == "upstream-error" && i == 0 {
 						return status.Error(codes.Unavailable, "fixture")
 					}
 				}
-				if tc.mode == "deny-last" || tc.mode == "revision" || tc.mode == "unavailable" || tc.mode == "client-cancel" {
+				if tc.mode == "client-cancel" {
 					<-stream.Context().Done()
 				}
 				return nil
@@ -220,7 +233,7 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			if tc.mode == "max-content" {
 				maxFrames = 5
 			}
-			cfg := streamFile{Listen: relayListener.Addr().String(), Upstream: upListener.Addr().String(), Method: "/sample.Service/Read", Descriptor: rawDesc, DescriptorDigest: shaBytes(rawDesc), Organization: "org", Action: "read", ResourceType: "page", ResourceSelector: "x-page", Selectors: []string{"x-scope", "x-page", "x-version"}, FixedSelectors: map[string]string{"x-scope": "workspace"}, MaxWireBytes: streamResponseWireMax, MaxFrames: maxFrames}
+			cfg := streamFile{Scope: "single-object", Listen: relayListener.Addr().String(), Upstream: upListener.Addr().String(), Method: "/sample.Service/Read", Descriptor: rawDesc, DescriptorDigest: shaBytes(rawDesc), Organization: "org", Action: "read", ResourceType: "page", ResourceSelector: "x-page", Selectors: []string{"x-scope", "x-page", "x-version"}, FixedSelectors: map[string]string{"x-scope": "workspace"}, MaxWireBytes: streamResponseWireMax, MaxFrames: maxFrames}
 			cfgBytes, err := json.Marshal(cfg)
 			if err != nil {
 				t.Fatal(err)
@@ -266,6 +279,9 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			if tc.mode == "wrong-method" {
 				method = "/sample.Service/Other"
 			}
+			if tc.mode == "other-streaming-method" {
+				method = "/sample.Service/List"
+			}
 			stream, err := client.NewStream(ctx, &grpc.StreamDesc{ServerStreams: true, ClientStreams: tc.mode == "two-requests" || tc.mode == "no-half-close"}, method, grpc.ForceCodec(rawRPCCodec{}))
 			if err != nil {
 				t.Fatal(err)
@@ -274,7 +290,7 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			if tc.mode == "request-cap-exceeded" {
 				request = bytes.Repeat([]byte("a"), streamRequestMax+1)
 			}
-			if err := stream.SendMsg(&request); err != nil && tc.mode != "request-cap-exceeded" && tc.mode != "wrong-method" {
+			if err := stream.SendMsg(&request); err != nil && tc.mode != "request-cap-exceeded" && tc.mode != "wrong-method" && tc.mode != "other-streaming-method" {
 				t.Fatal(err)
 			}
 			if tc.mode == "two-requests" {
@@ -283,7 +299,7 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 				}
 			}
 			if tc.mode != "no-half-close" {
-				if err := stream.CloseSend(); err != nil && tc.mode != "request-cap-exceeded" && tc.mode != "wrong-method" {
+				if err := stream.CloseSend(); err != nil && tc.mode != "request-cap-exceeded" && tc.mode != "wrong-method" && tc.mode != "other-streaming-method" {
 					t.Fatal(err)
 				}
 			}
@@ -292,7 +308,7 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 				case <-canceled:
 					t.Fatal("stream ended before testing flow control")
 				case <-time.After(200 * time.Millisecond):
-					if len(relay.sem) != 1 || checker.calls.Load() < 2 {
+					if len(relay.sem) != 1 || checker.calls.Load() != 1 {
 						t.Fatal("relay did not remain active while client stalled")
 					}
 				}
@@ -323,10 +339,14 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 					if frames == 0 && string(b) != "header" || frames > 0 && (frames > 4 || !bytes.Equal(b, dataFrame)) {
 						t.Fatal("response bytes or order changed")
 					}
-				} else if frames > 1 || string(b) != []string{"header", "data"}[frames] {
+				} else if frames > 2 || string(b) != []string{"header", "data", "tail"}[frames] {
 					t.Fatal("response bytes or order changed")
 				}
 				frames++
+				if tc.mode == "revoke-after-data" && frames == 2 {
+					checker.revoked.Store(true)
+					close(resume)
+				}
 				if tc.mode == "client-cancel" {
 					cancel()
 				}
@@ -334,10 +354,29 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			if (err == io.EOF) != tc.wantSuccess || frames != tc.wantFrames || checker.calls.Load() != tc.wantChecks || upstreamCalls.Load() != tc.wantCalls {
 				t.Fatalf("err=%v frames=%d checks=%d calls=%d", err, frames, checker.calls.Load(), upstreamCalls.Load())
 			}
+			if tc.mode == "revoke-after-data" {
+				next, err := client.NewStream(ctx, &grpc.StreamDesc{ServerStreams: true}, method, grpc.ForceCodec(rawRPCCodec{}))
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := next.SendMsg(&request); err != nil {
+					t.Fatal(err)
+				}
+				if err := next.CloseSend(); err != nil {
+					t.Fatal(err)
+				}
+				var b []byte
+				if err := next.RecvMsg(&b); status.Code(err) != codes.PermissionDenied || len(b) != 0 || checker.calls.Load() != 2 || upstreamCalls.Load() != 1 {
+					t.Fatalf("next request after revocation: err=%v checks=%d upstream=%d", err, checker.calls.Load(), upstreamCalls.Load())
+				}
+			}
 			if tc.mode == "no-half-close" && status.Code(err) != codes.DeadlineExceeded {
 				t.Fatalf("open request did not reach its deadline: %v", err)
 			}
-			if tc.mode == "deny-last" || tc.mode == "revision" || tc.mode == "unavailable" || tc.mode == "client-cancel" || tc.mode == "upstream-stall" {
+			if tc.mode == "other-streaming-method" && status.Code(err) != codes.PermissionDenied {
+				t.Fatalf("other streaming method was not denied: %v", err)
+			}
+			if tc.mode == "client-cancel" || tc.mode == "upstream-stall" {
 				select {
 				case <-canceled:
 				case <-time.After(time.Second):

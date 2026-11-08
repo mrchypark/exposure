@@ -21,7 +21,7 @@ func TestStreamServerStartupConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := streamFile{Upstream: "127.0.0.1:1234", Method: "/fixture.Service/Read", Descriptor: raw, DescriptorDigest: shaBytes(raw), Organization: "org", Action: "read", ResourceType: "page", ResourceSelector: "x-page", Selectors: []string{"x-workspace", "x-page", "x-commit"}, FixedSelectors: map[string]string{"x-workspace": "workspace"}, MaxWireBytes: streamResponseWireMax, MaxFrames: 5}
+	base := streamFile{Scope: "single-object", Upstream: "127.0.0.1:1234", Method: "/fixture.Service/Read", Descriptor: raw, DescriptorDigest: shaBytes(raw), Organization: "org", Action: "read", ResourceType: "page", ResourceSelector: "x-page", Selectors: []string{"x-workspace", "x-page", "x-commit"}, FixedSelectors: map[string]string{"x-workspace": "workspace"}, MaxWireBytes: streamResponseWireMax, MaxFrames: 5}
 	for _, tc := range []struct {
 		name   string
 		change func(*streamFile)
@@ -29,6 +29,11 @@ func TestStreamServerStartupConfig(t *testing.T) {
 		want   bool
 	}{
 		{"valid", func(*streamFile) {}, nil, true},
+		{"missing scope", func(c *streamFile) { c.Scope = "" }, nil, false},
+		{"multi-object scope", func(c *streamFile) { c.Scope = "multi-object" }, nil, false},
+		{"omitted scope", func(*streamFile) {}, func(b []byte) []byte {
+			return bytes.Replace(b, []byte(`"scope":"single-object",`), nil, 1)
+		}, false},
 		{"max frames", func(c *streamFile) { c.MaxFrames = streamMaxFrames }, nil, true},
 		{"zero frames", func(c *streamFile) { c.MaxFrames = 0 }, nil, false},
 		{"too many frames", func(c *streamFile) { c.MaxFrames = streamMaxFrames + 1 }, nil, false},

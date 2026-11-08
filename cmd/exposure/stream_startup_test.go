@@ -133,7 +133,7 @@ func TestStreamAppStartupAndShutdown(t *testing.T) {
 			t.Cleanup(adapter.Stop)
 			streamPath := ""
 			if enabled {
-				config := map[string]any{"listen": addresses[2], "upstream": addresses[3], "method": "/fixture.Service/Read", "descriptor": raw, "descriptorDigest": fmt.Sprintf("sha256:%x", sha256.Sum256(raw)), "organization": "org", "action": "read", "resourceType": "page", "resourceSelector": "x-page", "selectors": []string{"x-workspace", "x-page", "x-commit"}, "fixedSelectors": map[string]string{"x-workspace": "workspace"}, "maxWireBytes": 278528, "maxFrames": 5}
+				config := map[string]any{"scope": "single-object", "listen": addresses[2], "upstream": addresses[3], "method": "/fixture.Service/Read", "descriptor": raw, "descriptorDigest": fmt.Sprintf("sha256:%x", sha256.Sum256(raw)), "organization": "org", "action": "read", "resourceType": "page", "resourceSelector": "x-page", "selectors": []string{"x-workspace", "x-page", "x-commit"}, "fixedSelectors": map[string]string{"x-workspace": "workspace"}, "maxWireBytes": 278528, "maxFrames": 5}
 				b, marshalErr := json.Marshal(config)
 				if marshalErr != nil {
 					t.Fatal(marshalErr)
@@ -234,7 +234,7 @@ func TestStreamAppStartupAndShutdown(t *testing.T) {
 				if err != nil || string(frame.GetValue()) != "frame" {
 					t.Fatalf("allowed stream frame=%v error=%v", frame, err)
 				}
-				if checker.checks.Load() != 3 || adapterCalls.Load() != 1 {
+				if checker.checks.Load() != 2 || adapterCalls.Load() != 1 {
 					t.Fatalf("checks=%d upstream calls=%d", checker.checks.Load(), adapterCalls.Load())
 				}
 			} else if conn, dialErr := net.DialTimeout("tcp", addresses[2], 100*time.Millisecond); dialErr == nil {
