@@ -1,0 +1,38 @@
+name: One-off Darwin ARM64 artifact
+
+on:
+  push:
+    branches: [ci/exposure-darwin-artifact-5bf054c]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'mrchypark/exposure' && github.ref == 'refs/heads/ci/exposure-darwin-artifact-5bf054c'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: 5bf054c32ae55aff0397ee2bb341ba5df4926e98
+          persist-credentials: false
+      - name: Verify source revision
+        run: test "$(git rev-parse HEAD)" = 5bf054c32ae55aff0397ee2bb341ba5df4926e98
+      - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
+        with:
+          go-version-file: go.mod
+      - name: Build Darwin ARM64 executable
+        run: |
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o "$RUNNER_TEMP/exposure" ./cmd/exposure
+          cd "$RUNNER_TEMP"
+          sha256sum exposure | tee exposure.sha256
+          printf '%s\n' 5bf054c32ae55aff0397ee2bb341ba5df4926e98 > exposure.source-sha
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: exposure-darwin-arm64-5bf054c32ae55aff0397ee2bb341ba5df4926e98
+          path: |
+            ${{ runner.temp }}/exposure
+            ${{ runner.temp }}/exposure.sha256
+            ${{ runner.temp }}/exposure.source-sha
+          if-no-files-found: error
+          retention-days: 7
