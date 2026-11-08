@@ -48,6 +48,7 @@ func TestBusinessGRPCRequiresExplicitProfile(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			setProxyOrigins(t)
 			t.Setenv("EXPOSURE_BUSINESS_GRPC_FILE", tc.file)
+			t.Setenv("EXPOSURE_STREAM_GRPC_FILE", "")
 			t.Setenv("EXPOSURE_GRANT_GRPC_TARGET", tc.target)
 			t.Setenv("EXPOSURE_CREDENTIAL_MODE", tc.mode)
 			t.Setenv("EXPOSURE_GOAUTHY_USER_CLIENT_ID", tc.client)
@@ -55,9 +56,44 @@ func TestBusinessGRPCRequiresExplicitProfile(t *testing.T) {
 			if tc.mode == "goauthy" {
 				t.Setenv("EXPOSURE_GOAUTHY_ISSUER", "https://issuer.example")
 			}
-			_, err := Load()
+			cfg, err := Load()
 			if (err == nil) != tc.want {
 				t.Fatalf("Load()=%v want success=%v", err, tc.want)
+			}
+			if err == nil && cfg.BusinessGRPCFile != tc.file {
+				t.Fatalf("business file=%q want %q", cfg.BusinessGRPCFile, tc.file)
+			}
+		})
+	}
+}
+
+func TestStreamGRPCRequiresExplicitProfile(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, target, mode, client, audience string
+		want                                       bool
+	}{
+		{"off", "", "", "rauthy", "", "", true},
+		{"no learner", "fixture", "", "goauthy", "client", "resource", false},
+		{"no user profile", "fixture", "127.0.0.1:8081", "goauthy", "", "", false},
+		{"configured", "fixture", "127.0.0.1:8081", "goauthy", "client", "resource", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			setProxyOrigins(t)
+			t.Setenv("EXPOSURE_STREAM_GRPC_FILE", tc.file)
+			t.Setenv("EXPOSURE_BUSINESS_GRPC_FILE", "")
+			t.Setenv("EXPOSURE_GRANT_GRPC_TARGET", tc.target)
+			t.Setenv("EXPOSURE_CREDENTIAL_MODE", tc.mode)
+			t.Setenv("EXPOSURE_GOAUTHY_USER_CLIENT_ID", tc.client)
+			t.Setenv("EXPOSURE_GOAUTHY_USER_RESOURCE_AUDIENCE", tc.audience)
+			if tc.mode == "goauthy" {
+				t.Setenv("EXPOSURE_GOAUTHY_ISSUER", "https://issuer.example")
+			}
+			cfg, err := Load()
+			if (err == nil) != tc.want {
+				t.Fatalf("Load()=%v want success=%v", err, tc.want)
+			}
+			if err == nil && cfg.StreamGRPCFile != tc.file {
+				t.Fatalf("stream file=%q want %q", cfg.StreamGRPCFile, tc.file)
 			}
 		})
 	}

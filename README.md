@@ -132,6 +132,51 @@ readiness also requires a fresh validated business catalog matching the fixed
 method allowlist, fetched from the learner on each probe using the dependency
 timeout; it does not prove upstream service health.
 
+For an isolated server-streaming proof, set `EXPOSURE_STREAM_GRPC_FILE` to a
+startup-only regular JSON file. It is disabled by default and requires proxy
+mode, a gRPC learner, and the explicit Goauthy USER client/resource profile.
+The closed object requires `scope: "single-object"`, `listen`, `upstream`, `method`, `descriptor`,
+`descriptorDigest`, `organization`, `action`, `resourceType`,
+`resourceSelector`, `selectors`, `fixedSelectors`, `maxWireBytes`, and
+`maxFrames`. The descriptor is a base64-encoded serialized FileDescriptorSet;
+its exact digest and server-streaming method are checked at startup. Selectors
+are singleton metadata keys accepted only from the trusted colocated caller;
+the named resource selector supplies the Grant resource ID, and at least one
+other selector must have a fixed value in `fixedSelectors`.
+
+The file is bounded to 2 MiB and is not reloaded. Both addresses must be literal
+loopback addresses with nonzero ports. The listener and its upstream are
+plaintext; all processes in the shared network namespace must be trusted.
+Loopback is not peer authentication. The caller supplies a deadline of at most
+three seconds, one request message (at most 4 KiB), and EOF. The relay limits
+each encoded response frame to 64 KiB plus 1 KiB overhead, total encoded
+response bytes to the configured `maxWireBytes` (at most 256 KiB plus 16 KiB
+overhead), and frames to `maxFrames` (1–4096). A pilot may configure five
+frames. The trusted upstream adapter, not this generic relay, verifies raw
+content size and integrity before emitting its first frame. The relay sends no
+user Bearer, organization, or Grant key to that adapter. It checks Grant once
+before opening the upstream; revocation after admission affects the next call,
+not the transfer already admitted. This policy is only for a single verified
+object, never a multi-object stream. The operator must pin the reviewed exact
+method, descriptor and fixed loopback upstream to a separately verified,
+service-owned single-object adapter. The scope field is an assertion, not
+proof of adapter semantics or executable identity. Configuring any other
+compatible multi-object service would not automatically protect its objects.
+The trusted adapter must verify the entire object and its published identity
+before emitting any frame. It must bind the returned object to the exact
+resource selector authorized by Grant and reject conflicts with the request
+body. `/readyz` retains its existing HTTP
+readiness meaning and does not indicate stream readiness. When enabled,
+`/stream-healthz` indicates only whether the stream listener is serving; it
+does not prove Grant batch-method support, adapter health, or authorization.
+Before operational enablement, pin a compatible Grant source and image and run
+an authenticated functional smoke test in the intended scope. An unimplemented
+batch method fails closed. No production TLS, ingress
+authentication, or safe cross-Pod topology is provided by this pilot.
+Do not use host networking, expose either loopback endpoint through a Service,
+or add untrusted sidecars or debug containers. Direct access to the underlying
+storage service must be blocked separately before any pilot cutover.
+
 Both origins use the same neutral validator. Operations configuration selects
 their complete address, scheme and port at startup; no service name, Kubernetes
 suffix, network range or service-specific port is required. Canonical lowercase
