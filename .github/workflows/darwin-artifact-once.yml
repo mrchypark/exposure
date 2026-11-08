@@ -14,10 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
-          ref: 5bf054c32ae55aff0397ee2bb341ba5df4926e98
+          ref: 850a7519dec1ec9267d9bf1c68bac87da384cd2e
           persist-credentials: false
       - name: Verify source revision
-        run: test "$(git rev-parse HEAD)" = 5bf054c32ae55aff0397ee2bb341ba5df4926e98
+        run: test "$(git rev-parse HEAD)" = 850a7519dec1ec9267d9bf1c68bac87da384cd2e
       - uses: actions/setup-go@0a12ed9d6a96ab950c8f026ed9f722fe0da7ef32
         with:
           go-version-file: go.mod
@@ -26,10 +26,10 @@ jobs:
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o "$RUNNER_TEMP/exposure" ./cmd/exposure
           cd "$RUNNER_TEMP"
           sha256sum exposure | tee exposure.sha256
-          printf '%s\n' 5bf054c32ae55aff0397ee2bb341ba5df4926e98 > exposure.source-sha
+          printf '%s\n' 850a7519dec1ec9267d9bf1c68bac87da384cd2e > exposure.source-sha
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: exposure-darwin-arm64-5bf054c32ae55aff0397ee2bb341ba5df4926e98
+          name: exposure-darwin-arm64-850a7519dec1ec9267d9bf1c68bac87da384cd2e
           path: |
             ${{ runner.temp }}/exposure
             ${{ runner.temp }}/exposure.sha256
