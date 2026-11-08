@@ -19,10 +19,11 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PolicyDecisionPoint_GetHttpCatalog_FullMethodName = "/grant.pdp.v1.PolicyDecisionPoint/GetHttpCatalog"
-	PolicyDecisionPoint_DecideHttp_FullMethodName     = "/grant.pdp.v1.PolicyDecisionPoint/DecideHttp"
-	PolicyDecisionPoint_GetGrpcCatalog_FullMethodName = "/grant.pdp.v1.PolicyDecisionPoint/GetGrpcCatalog"
-	PolicyDecisionPoint_DecideGrpc_FullMethodName     = "/grant.pdp.v1.PolicyDecisionPoint/DecideGrpc"
+	PolicyDecisionPoint_GetHttpCatalog_FullMethodName         = "/grant.pdp.v1.PolicyDecisionPoint/GetHttpCatalog"
+	PolicyDecisionPoint_DecideHttp_FullMethodName             = "/grant.pdp.v1.PolicyDecisionPoint/DecideHttp"
+	PolicyDecisionPoint_GetGrpcCatalog_FullMethodName         = "/grant.pdp.v1.PolicyDecisionPoint/GetGrpcCatalog"
+	PolicyDecisionPoint_DecideGrpc_FullMethodName             = "/grant.pdp.v1.PolicyDecisionPoint/DecideGrpc"
+	PolicyDecisionPoint_BatchCheckProviderUser_FullMethodName = "/grant.pdp.v1.PolicyDecisionPoint/BatchCheckProviderUser"
 )
 
 // PolicyDecisionPointClient is the client API for PolicyDecisionPoint service.
@@ -40,6 +41,7 @@ type PolicyDecisionPointClient interface {
 	DecideHttp(ctx context.Context, in *DecisionRequest, opts ...grpc.CallOption) (*DecisionResponse, error)
 	GetGrpcCatalog(ctx context.Context, in *CatalogRequest, opts ...grpc.CallOption) (*CatalogResponse, error)
 	DecideGrpc(ctx context.Context, in *DecisionRequest, opts ...grpc.CallOption) (*DecisionResponse, error)
+	BatchCheckProviderUser(ctx context.Context, in *ProviderUserBatchRequest, opts ...grpc.CallOption) (*DecisionResponse, error)
 }
 
 type policyDecisionPointClient struct {
@@ -90,6 +92,16 @@ func (c *policyDecisionPointClient) DecideGrpc(ctx context.Context, in *Decision
 	return out, nil
 }
 
+func (c *policyDecisionPointClient) BatchCheckProviderUser(ctx context.Context, in *ProviderUserBatchRequest, opts ...grpc.CallOption) (*DecisionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DecisionResponse)
+	err := c.cc.Invoke(ctx, PolicyDecisionPoint_BatchCheckProviderUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PolicyDecisionPointServer is the server API for PolicyDecisionPoint service.
 // All implementations must embed UnimplementedPolicyDecisionPointServer
 // for forward compatibility.
@@ -105,6 +117,7 @@ type PolicyDecisionPointServer interface {
 	DecideHttp(context.Context, *DecisionRequest) (*DecisionResponse, error)
 	GetGrpcCatalog(context.Context, *CatalogRequest) (*CatalogResponse, error)
 	DecideGrpc(context.Context, *DecisionRequest) (*DecisionResponse, error)
+	BatchCheckProviderUser(context.Context, *ProviderUserBatchRequest) (*DecisionResponse, error)
 	mustEmbedUnimplementedPolicyDecisionPointServer()
 }
 
@@ -126,6 +139,9 @@ func (UnimplementedPolicyDecisionPointServer) GetGrpcCatalog(context.Context, *C
 }
 func (UnimplementedPolicyDecisionPointServer) DecideGrpc(context.Context, *DecisionRequest) (*DecisionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DecideGrpc not implemented")
+}
+func (UnimplementedPolicyDecisionPointServer) BatchCheckProviderUser(context.Context, *ProviderUserBatchRequest) (*DecisionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method BatchCheckProviderUser not implemented")
 }
 func (UnimplementedPolicyDecisionPointServer) mustEmbedUnimplementedPolicyDecisionPointServer() {}
 func (UnimplementedPolicyDecisionPointServer) testEmbeddedByValue()                             {}
@@ -220,6 +236,24 @@ func _PolicyDecisionPoint_DecideGrpc_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PolicyDecisionPoint_BatchCheckProviderUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProviderUserBatchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PolicyDecisionPointServer).BatchCheckProviderUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PolicyDecisionPoint_BatchCheckProviderUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PolicyDecisionPointServer).BatchCheckProviderUser(ctx, req.(*ProviderUserBatchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PolicyDecisionPoint_ServiceDesc is the grpc.ServiceDesc for PolicyDecisionPoint service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -242,6 +276,10 @@ var PolicyDecisionPoint_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DecideGrpc",
 			Handler:    _PolicyDecisionPoint_DecideGrpc_Handler,
+		},
+		{
+			MethodName: "BatchCheckProviderUser",
+			Handler:    _PolicyDecisionPoint_BatchCheckProviderUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

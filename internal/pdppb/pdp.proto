@@ -15,6 +15,7 @@ service PolicyDecisionPoint {
   rpc DecideHttp(DecisionRequest) returns (DecisionResponse);
   rpc GetGrpcCatalog(CatalogRequest) returns (CatalogResponse);
   rpc DecideGrpc(DecisionRequest) returns (DecisionResponse);
+  rpc BatchCheckProviderUser(ProviderUserBatchRequest) returns (DecisionResponse);
 }
 
 message CatalogRequest {
@@ -31,4 +32,10 @@ message DecisionRequest {
 
 message DecisionResponse {
   bytes decision_json = 1;
+}
+
+message ProviderUserBatchRequest {
+  string provider_id = 1;
+  // The closed HTTP provider USER batch body: {"checks":[...]}.
+  bytes checks_json = 2;
 }
