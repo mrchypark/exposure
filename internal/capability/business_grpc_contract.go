@@ -16,7 +16,7 @@ import (
 
 	"github.com/mrchypark/exposure/internal/contracts"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/desc/protodesc"
+	"google.golang.org/protobuf/reflect/protodesc"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/descriptorpb"
 )
