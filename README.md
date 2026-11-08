@@ -105,7 +105,7 @@ already-running operations.
 
 Set `EXPOSURE_PROXY_ENABLED=true` and supply:
 
-- `EXPOSURE_GRANT_LEARNER_URL`: fixed Grant protocol HTTP(S) origin.
+- `EXPOSURE_GRANT_LEARNER_URL`: fixed Grant HTTP(S) origin when gRPC is not configured. With gRPC configured, this is optional and is not a fallback.
 - `EXPOSURE_PROVIDER_ID`, `EXPOSURE_PEP_CLIENT_ID`: registered identities.
 - `EXPOSURE_PROVIDER_ORIGIN`: fixed provider HTTP(S) origin.
 - `EXPOSURE_EXPECTED_CATALOG_DIGEST`: reviewed active catalog digest.
@@ -204,3 +204,15 @@ go build ./...
 ./deploy/stage-a-dev/test-stage-a.sh --fixture
 docker build --check .
 ```
+
+# Grant learner gRPC transport
+
+The HTTP capability proxy can opt into a native gRPC learner connection with
+`EXPOSURE_GRANT_GRPC_TARGET=host:port`. With no target the existing HTTP
+learner remains unchanged. The simple-read mode cannot use this setting.
+Plaintext is allowed only for literal loopback addresses. Other addresses
+require both `EXPOSURE_GRANT_GRPC_CA_FILE` and
+`EXPOSURE_GRANT_GRPC_SERVER_NAME`; TLS certificate verification remains on.
+The configured dependency timeout applies to each call. There is no gRPC to
+HTTP fallback or application-level retry. grpc-go may transparently retry an
+attempt known not to have reached the server application.
