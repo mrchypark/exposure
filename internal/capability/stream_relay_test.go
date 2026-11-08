@@ -247,7 +247,7 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			if tc.mode == "wrong-method" {
 				method = "/sample.Service/Other"
 			}
-			stream, err := client.NewStream(ctx, &grpc.StreamDesc{ServerStreams: true, ClientStreams: tc.mode == "two-requests"}, method, grpc.ForceCodec(rawRPCCodec{}))
+			stream, err := client.NewStream(ctx, &grpc.StreamDesc{ServerStreams: true, ClientStreams: tc.mode == "two-requests" || tc.mode == "no-half-close"}, method, grpc.ForceCodec(rawRPCCodec{}))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -314,6 +314,9 @@ func TestStreamPilotPerFrameAuthorization(t *testing.T) {
 			}
 			if (err == io.EOF) != tc.wantSuccess || frames != tc.wantFrames || checker.calls.Load() != tc.wantChecks || upstreamCalls.Load() != tc.wantCalls {
 				t.Fatalf("err=%v frames=%d checks=%d calls=%d", err, frames, checker.calls.Load(), upstreamCalls.Load())
+			}
+			if tc.mode == "no-half-close" && status.Code(err) != codes.DeadlineExceeded {
+				t.Fatalf("open request did not reach its deadline: %v", err)
 			}
 			if tc.mode == "deny-last" || tc.mode == "revision" || tc.mode == "unavailable" || tc.mode == "client-cancel" || tc.mode == "upstream-stall" {
 				select {
