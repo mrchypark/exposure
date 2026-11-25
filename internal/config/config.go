@@ -18,6 +18,7 @@ type Config struct {
 	ListenAddr, LearnerURL                                                                        string
 	LearnerGRPCTarget, LearnerGRPCCAFile, LearnerGRPCServerName                                   string
 	BusinessGRPCFile                                                                              string
+	StreamGRPCFile                                                                                string
 	ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout, DependencyTimeout, ShutdownTimeout time.Duration
 	MaxHeaderBytes, MaxResponseBytes, MaxConcurrent                                               int
 	Proxy                                                                                         ProxyConfig
@@ -48,6 +49,7 @@ func Load() (Config, error) {
 	c.LearnerGRPCCAFile = os.Getenv("EXPOSURE_GRANT_GRPC_CA_FILE")
 	c.LearnerGRPCServerName = os.Getenv("EXPOSURE_GRANT_GRPC_SERVER_NAME")
 	c.BusinessGRPCFile = os.Getenv("EXPOSURE_BUSINESS_GRPC_FILE")
+	c.StreamGRPCFile = os.Getenv("EXPOSURE_STREAM_GRPC_FILE")
 	var err error
 	for _, x := range []struct {
 		name string
@@ -148,6 +150,9 @@ func Load() (Config, error) {
 	}
 	if c.BusinessGRPCFile != "" && (!c.Proxy.Enabled || c.LearnerGRPCTarget == "" || c.Proxy.CredentialMode != "goauthy" || c.Proxy.GoauthyUserClientID == "" || c.Proxy.GoauthyUserResourceAudience == "") {
 		return Config{}, fmt.Errorf("business gRPC requires capability mode, gRPC learner and Goauthy USER profile")
+	}
+	if c.StreamGRPCFile != "" && (!c.Proxy.Enabled || c.LearnerGRPCTarget == "" || c.Proxy.CredentialMode != "goauthy" || c.Proxy.GoauthyUserClientID == "" || c.Proxy.GoauthyUserResourceAudience == "") {
+		return Config{}, fmt.Errorf("stream gRPC requires capability mode, gRPC learner and Goauthy USER profile")
 	}
 	if c.DependencyTimeout >= c.WriteTimeout {
 		return Config{}, fmt.Errorf("dependency timeout must be below write timeout")

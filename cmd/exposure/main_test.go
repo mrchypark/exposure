@@ -10,9 +10,29 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mrchypark/exposure/internal/capability"
 	"github.com/mrchypark/exposure/internal/config"
 	"github.com/mrchypark/exposure/internal/contracts"
 )
+
+func TestStreamHealthIsListenerLivenessOnly(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		stream *capability.StreamServer
+		want   int
+	}{
+		{"disabled", nil, http.StatusNotFound},
+		{"not listening", &capability.StreamServer{}, http.StatusServiceUnavailable},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			proxyAdmin(nil, nil, tc.stream).ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/stream-healthz", nil))
+			if w.Code != tc.want {
+				t.Fatalf("status = %d, want %d", w.Code, tc.want)
+			}
+		})
+	}
+}
 
 func TestLoadReadArtifactsCollection(t *testing.T) {
 	d := t.TempDir()

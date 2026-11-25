@@ -197,6 +197,59 @@ func (x *DecisionResponse) GetDecisionJson() []byte {
 	return nil
 }
 
+type ProviderUserBatchRequest struct {
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	ProviderId string                 `protobuf:"bytes,1,opt,name=provider_id,json=providerId,proto3" json:"provider_id,omitempty"`
+	// The closed HTTP provider USER batch body: {"checks":[...]}.
+	ChecksJson    []byte `protobuf:"bytes,2,opt,name=checks_json,json=checksJson,proto3" json:"checks_json,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProviderUserBatchRequest) Reset() {
+	*x = ProviderUserBatchRequest{}
+	mi := &file_api_pdp_v1_pdp_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProviderUserBatchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProviderUserBatchRequest) ProtoMessage() {}
+
+func (x *ProviderUserBatchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_pdp_v1_pdp_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProviderUserBatchRequest.ProtoReflect.Descriptor instead.
+func (*ProviderUserBatchRequest) Descriptor() ([]byte, []int) {
+	return file_api_pdp_v1_pdp_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ProviderUserBatchRequest) GetProviderId() string {
+	if x != nil {
+		return x.ProviderId
+	}
+	return ""
+}
+
+func (x *ProviderUserBatchRequest) GetChecksJson() []byte {
+	if x != nil {
+		return x.ChecksJson
+	}
+	return nil
+}
+
 var File_api_pdp_v1_pdp_proto protoreflect.FileDescriptor
 
 const file_api_pdp_v1_pdp_proto_rawDesc = "" +
@@ -210,14 +263,20 @@ const file_api_pdp_v1_pdp_proto_rawDesc = "" +
 	"\x0fDecisionRequest\x12#\n" +
 	"\revidence_json\x18\x01 \x01(\fR\fevidenceJson\"7\n" +
 	"\x10DecisionResponse\x12#\n" +
-	"\rdecision_json\x18\x01 \x01(\fR\fdecisionJson2\xcd\x02\n" +
+	"\rdecision_json\x18\x01 \x01(\fR\fdecisionJson\"\\\n" +
+	"\x18ProviderUserBatchRequest\x12\x1f\n" +
+	"\vprovider_id\x18\x01 \x01(\tR\n" +
+	"providerId\x12\x1f\n" +
+	"\vchecks_json\x18\x02 \x01(\fR\n" +
+	"checksJson2\xaf\x03\n" +
 	"\x13PolicyDecisionPoint\x12M\n" +
 	"\x0eGetHttpCatalog\x12\x1c.grant.pdp.v1.CatalogRequest\x1a\x1d.grant.pdp.v1.CatalogResponse\x12K\n" +
 	"\n" +
 	"DecideHttp\x12\x1d.grant.pdp.v1.DecisionRequest\x1a\x1e.grant.pdp.v1.DecisionResponse\x12M\n" +
 	"\x0eGetGrpcCatalog\x12\x1c.grant.pdp.v1.CatalogRequest\x1a\x1d.grant.pdp.v1.CatalogResponse\x12K\n" +
 	"\n" +
-	"DecideGrpc\x12\x1d.grant.pdp.v1.DecisionRequest\x1a\x1e.grant.pdp.v1.DecisionResponseB-Z+github.com/mrchypark/grant/api/pdp/v1;pdppbb\x06proto3"
+	"DecideGrpc\x12\x1d.grant.pdp.v1.DecisionRequest\x1a\x1e.grant.pdp.v1.DecisionResponse\x12`\n" +
+	"\x16BatchCheckProviderUser\x12&.grant.pdp.v1.ProviderUserBatchRequest\x1a\x1e.grant.pdp.v1.DecisionResponseB-Z+github.com/mrchypark/grant/api/pdp/v1;pdppbb\x06proto3"
 
 var (
 	file_api_pdp_v1_pdp_proto_rawDescOnce sync.Once
@@ -231,24 +290,27 @@ func file_api_pdp_v1_pdp_proto_rawDescGZIP() []byte {
 	return file_api_pdp_v1_pdp_proto_rawDescData
 }
 
-var file_api_pdp_v1_pdp_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_api_pdp_v1_pdp_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_api_pdp_v1_pdp_proto_goTypes = []any{
-	(*CatalogRequest)(nil),   // 0: grant.pdp.v1.CatalogRequest
-	(*CatalogResponse)(nil),  // 1: grant.pdp.v1.CatalogResponse
-	(*DecisionRequest)(nil),  // 2: grant.pdp.v1.DecisionRequest
-	(*DecisionResponse)(nil), // 3: grant.pdp.v1.DecisionResponse
+	(*CatalogRequest)(nil),           // 0: grant.pdp.v1.CatalogRequest
+	(*CatalogResponse)(nil),          // 1: grant.pdp.v1.CatalogResponse
+	(*DecisionRequest)(nil),          // 2: grant.pdp.v1.DecisionRequest
+	(*DecisionResponse)(nil),         // 3: grant.pdp.v1.DecisionResponse
+	(*ProviderUserBatchRequest)(nil), // 4: grant.pdp.v1.ProviderUserBatchRequest
 }
 var file_api_pdp_v1_pdp_proto_depIdxs = []int32{
 	0, // 0: grant.pdp.v1.PolicyDecisionPoint.GetHttpCatalog:input_type -> grant.pdp.v1.CatalogRequest
 	2, // 1: grant.pdp.v1.PolicyDecisionPoint.DecideHttp:input_type -> grant.pdp.v1.DecisionRequest
 	0, // 2: grant.pdp.v1.PolicyDecisionPoint.GetGrpcCatalog:input_type -> grant.pdp.v1.CatalogRequest
 	2, // 3: grant.pdp.v1.PolicyDecisionPoint.DecideGrpc:input_type -> grant.pdp.v1.DecisionRequest
-	1, // 4: grant.pdp.v1.PolicyDecisionPoint.GetHttpCatalog:output_type -> grant.pdp.v1.CatalogResponse
-	3, // 5: grant.pdp.v1.PolicyDecisionPoint.DecideHttp:output_type -> grant.pdp.v1.DecisionResponse
-	1, // 6: grant.pdp.v1.PolicyDecisionPoint.GetGrpcCatalog:output_type -> grant.pdp.v1.CatalogResponse
-	3, // 7: grant.pdp.v1.PolicyDecisionPoint.DecideGrpc:output_type -> grant.pdp.v1.DecisionResponse
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
+	4, // 4: grant.pdp.v1.PolicyDecisionPoint.BatchCheckProviderUser:input_type -> grant.pdp.v1.ProviderUserBatchRequest
+	1, // 5: grant.pdp.v1.PolicyDecisionPoint.GetHttpCatalog:output_type -> grant.pdp.v1.CatalogResponse
+	3, // 6: grant.pdp.v1.PolicyDecisionPoint.DecideHttp:output_type -> grant.pdp.v1.DecisionResponse
+	1, // 7: grant.pdp.v1.PolicyDecisionPoint.GetGrpcCatalog:output_type -> grant.pdp.v1.CatalogResponse
+	3, // 8: grant.pdp.v1.PolicyDecisionPoint.DecideGrpc:output_type -> grant.pdp.v1.DecisionResponse
+	3, // 9: grant.pdp.v1.PolicyDecisionPoint.BatchCheckProviderUser:output_type -> grant.pdp.v1.DecisionResponse
+	5, // [5:10] is the sub-list for method output_type
+	0, // [0:5] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -265,7 +327,7 @@ func file_api_pdp_v1_pdp_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_pdp_v1_pdp_proto_rawDesc), len(file_api_pdp_v1_pdp_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
