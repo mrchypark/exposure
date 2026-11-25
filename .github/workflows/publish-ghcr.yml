@@ -64,7 +64,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ghcr.io/${{ github.repository }}:${{ env.IMAGE_TAG }}
           labels: |
@@ -85,8 +85,11 @@ jobs:
           BUILD_DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           set -eu
+          image_inspect="$(docker buildx imagetools inspect "$IMAGE:$IMAGE_TAG")"
           image_digest="$(docker buildx imagetools inspect "$IMAGE:$IMAGE_TAG" --format '{{.Manifest.Digest}}')"
           test "$image_digest" = "$BUILD_DIGEST"
+          printf '%s\n' "$image_inspect" | grep -q 'linux/amd64'
+          printf '%s\n' "$image_inspect" | grep -q 'linux/arm64'
           visibility="$(gh api "users/$PACKAGE_OWNER/packages/container/$PACKAGE_NAME" --jq .visibility)"
           test "$visibility" = private
           {
