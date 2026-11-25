@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package grant.pdp.v1;
+
+option go_package = "github.com/mrchypark/grant/api/pdp/v1;pdppb";
+
+// From the repository root, with protoc 34.1, protoc-gen-go v1.36.11 and
+// protoc-gen-go-grpc v1.6.2 on PATH:
+// protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative api/pdp/v1/pdp.proto
+//
+// The JSON payloads use Grant's existing capability contracts, including
+// their integer fields and digest preimages. Credentials travel in metadata.
+service PolicyDecisionPoint {
+  rpc GetHttpCatalog(CatalogRequest) returns (CatalogResponse);
+  rpc DecideHttp(DecisionRequest) returns (DecisionResponse);
+  rpc GetGrpcCatalog(CatalogRequest) returns (CatalogResponse);
+  rpc DecideGrpc(DecisionRequest) returns (DecisionResponse);
+}
+
+message CatalogRequest {
+  string provider_id = 1;
+}
+
+message CatalogResponse {
+  bytes catalog_json = 1;
+}
+
+message DecisionRequest {
+  bytes evidence_json = 1;
+}
+
+message DecisionResponse {
+  bytes decision_json = 1;
+}

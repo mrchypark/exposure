@@ -170,6 +170,7 @@ type Proxy struct {
 	grant   string
 	origin  *url.URL
 	http    *http.Client
+	learner *grpcLearner
 	sem     chan struct{}
 	mu      sync.RWMutex
 	active  *catalog
@@ -205,6 +206,13 @@ func New(cfg config.ProxyConfig, grant string, h *http.Client, maxConcurrent int
 
 // Refresh only replaces a catalog after all immutable bindings were checked.
 func (p *Proxy) Refresh(ctx context.Context) error {
+	if p.learner != nil {
+		b, err := p.learner.catalog(ctx, p.cfg.ProviderID, p.cfg.AppAuthKey)
+		if err != nil {
+			return err
+		}
+		return p.acceptCatalog(b)
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.grant+"/api/v2/http-capabilities/catalog/"+url.PathEscape(p.cfg.ProviderID), nil)
 	if err != nil {
 		return err
@@ -222,6 +230,9 @@ func (p *Proxy) Refresh(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	return p.acceptCatalog(b)
+}
+func (p *Proxy) acceptCatalog(b []byte) error {
 	var c catalog
 	if err := strictJSON(b, &c); err != nil {
 		return err
@@ -864,33 +875,48 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.grant+"/api/v2/http-capabilities/decide", bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Authorization", auth)
-	if org != "" {
-		req.Header.Set("X-Organization-ID", org)
-	}
-	req.Header.Set("X-Grant-App-Auth-Key", p.cfg.AppAuthKey)
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := p.http.Do(req)
-	if err != nil {
-		return decisionError{http.StatusBadGateway, "dependency_unavailable"}
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode == 401 {
-		return decisionError{401, "unauthorized"}
-	}
-	if resp.StatusCode == 403 {
-		return decisionError{403, "forbidden"}
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return decisionError{502, "dependency_unavailable"}
-	}
-	out, err := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if err != nil {
-		return decisionError{502, "dependency_unavailable"}
+	var out []byte
+	if p.learner != nil {
+		var statusCode int
+		out, statusCode, err = p.learner.decide(ctx, b, auth, org, p.cfg.AppAuthKey)
+		if statusCode == 401 {
+			return decisionError{401, "unauthorized"}
+		}
+		if statusCode == 403 {
+			return decisionError{403, "forbidden"}
+		}
+		if err != nil {
+			return decisionError{502, "dependency_unavailable"}
+		}
+	} else {
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, p.grant+"/api/v2/http-capabilities/decide", bytes.NewReader(b))
+		if err != nil {
+			return err
+		}
+		req.Header.Set("Authorization", auth)
+		if org != "" {
+			req.Header.Set("X-Organization-ID", org)
+		}
+		req.Header.Set("X-Grant-App-Auth-Key", p.cfg.AppAuthKey)
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := p.http.Do(req)
+		if err != nil {
+			return decisionError{http.StatusBadGateway, "dependency_unavailable"}
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode == 401 {
+			return decisionError{401, "unauthorized"}
+		}
+		if resp.StatusCode == 403 {
+			return decisionError{403, "forbidden"}
+		}
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return decisionError{502, "dependency_unavailable"}
+		}
+		out, err = io.ReadAll(io.LimitReader(resp.Body, 64<<10))
+		if err != nil {
+			return decisionError{502, "dependency_unavailable"}
+		}
 	}
 	var d struct {
 		WireVersion              json.RawMessage `json:"wireVersion,omitempty"`

@@ -104,6 +104,12 @@ func runCapabilityProxy(cfg config.Config) error {
 	if err != nil {
 		return err
 	}
+	if cfg.LearnerGRPCTarget != "" {
+		if err := p.ConfigureGRPCLearner(cfg.LearnerGRPCTarget, cfg.LearnerGRPCCAFile, cfg.LearnerGRPCServerName, cfg.DependencyTimeout); err != nil {
+			return err
+		}
+		defer p.CloseGRPCLearner()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	refresh := func() {

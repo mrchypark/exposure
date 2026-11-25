@@ -16,6 +16,7 @@ var dnsLabel = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 
 type Config struct {
 	ListenAddr, LearnerURL                                                                        string
+	LearnerGRPCTarget, LearnerGRPCCAFile, LearnerGRPCServerName                                   string
 	ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout, DependencyTimeout, ShutdownTimeout time.Duration
 	MaxHeaderBytes, MaxResponseBytes, MaxConcurrent                                               int
 	Proxy                                                                                         ProxyConfig
@@ -42,6 +43,9 @@ type ProxyConfig struct {
 
 func Load() (Config, error) {
 	c := Config{ListenAddr: env("EXPOSURE_ADDR", ":8080"), LearnerURL: os.Getenv("EXPOSURE_GRANT_LEARNER_URL"), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 15 * time.Second, WriteTimeout: 30 * time.Second, IdleTimeout: 60 * time.Second, DependencyTimeout: 5 * time.Second, ShutdownTimeout: 15 * time.Second, MaxHeaderBytes: 32 << 10, MaxResponseBytes: 4 << 20, MaxConcurrent: 128}
+	c.LearnerGRPCTarget = os.Getenv("EXPOSURE_GRANT_GRPC_TARGET")
+	c.LearnerGRPCCAFile = os.Getenv("EXPOSURE_GRANT_GRPC_CA_FILE")
+	c.LearnerGRPCServerName = os.Getenv("EXPOSURE_GRANT_GRPC_SERVER_NAME")
 	var err error
 	for _, x := range []struct {
 		name string
@@ -110,8 +114,35 @@ func Load() (Config, error) {
 			*item.target = d
 		}
 	}
-	if err = validateFixedOrigin(c.LearnerURL); err != nil {
-		return Config{}, fmt.Errorf("learner URL: %w", err)
+	if c.LearnerGRPCTarget == "" {
+		if c.LearnerGRPCCAFile != "" || c.LearnerGRPCServerName != "" {
+			return Config{}, fmt.Errorf("gRPC TLS settings require a target")
+		}
+		if err = validateFixedOrigin(c.LearnerURL); err != nil {
+			return Config{}, fmt.Errorf("learner URL: %w", err)
+		}
+	} else {
+		if !c.Proxy.Enabled {
+			return Config{}, fmt.Errorf("gRPC learner requires capability proxy mode")
+		}
+		host, port, splitErr := net.SplitHostPort(c.LearnerGRPCTarget)
+		n, portErr := strconv.Atoi(port)
+		if splitErr != nil || host == "" || portErr != nil || n < 1 || n > 65535 || strconv.Itoa(n) != port || strings.ContainsAny(host, "/% \t\r\n") {
+			return Config{}, fmt.Errorf("invalid gRPC learner target")
+		}
+		ip := net.ParseIP(host)
+		if c.LearnerGRPCCAFile == "" && c.LearnerGRPCServerName == "" {
+			if ip == nil || !ip.IsLoopback() {
+				return Config{}, fmt.Errorf("plaintext gRPC requires literal loopback")
+			}
+		} else if c.LearnerGRPCCAFile == "" || c.LearnerGRPCServerName == "" || strings.ContainsAny(c.LearnerGRPCServerName, "/ \t\r\n") {
+			return Config{}, fmt.Errorf("gRPC TLS requires CA file and server name")
+		}
+		if c.LearnerURL != "" {
+			if err = validateFixedOrigin(c.LearnerURL); err != nil {
+				return Config{}, fmt.Errorf("learner URL: %w", err)
+			}
+		}
 	}
 	if c.DependencyTimeout >= c.WriteTimeout {
 		return Config{}, fmt.Errorf("dependency timeout must be below write timeout")
