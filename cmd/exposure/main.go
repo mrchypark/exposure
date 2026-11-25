@@ -110,6 +110,14 @@ func runCapabilityProxy(cfg config.Config) error {
 		}
 		defer p.CloseGRPCLearner()
 	}
+	var business *capability.BusinessServer
+	if cfg.BusinessGRPCFile != "" {
+		business, err = p.NewBusinessServer(cfg.BusinessGRPCFile)
+		if err != nil {
+			return err
+		}
+		defer business.Close()
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	refresh := func() {
@@ -131,8 +139,8 @@ func runCapabilityProxy(cfg config.Config) error {
 		}
 	}()
 	data := &http.Server{Addr: cfg.Proxy.DataAddr, Handler: p.Handler(), ReadHeaderTimeout: cfg.ReadHeaderTimeout, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, MaxHeaderBytes: cfg.MaxHeaderBytes}
-	admin := &http.Server{Addr: cfg.Proxy.AdminAddr, Handler: proxyAdmin(p), ReadHeaderTimeout: cfg.ReadHeaderTimeout, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, MaxHeaderBytes: cfg.MaxHeaderBytes}
-	errs := make(chan error, 2)
+	admin := &http.Server{Addr: cfg.Proxy.AdminAddr, Handler: proxyAdmin(p, business), ReadHeaderTimeout: cfg.ReadHeaderTimeout, ReadTimeout: cfg.ReadTimeout, WriteTimeout: cfg.WriteTimeout, IdleTimeout: cfg.IdleTimeout, MaxHeaderBytes: cfg.MaxHeaderBytes}
+	errs := make(chan error, 3)
 	serve := func(s *http.Server) {
 		ln, e := net.Listen("tcp", s.Addr)
 		if e != nil {
@@ -143,9 +151,15 @@ func runCapabilityProxy(cfg config.Config) error {
 	}
 	go serve(data)
 	go serve(admin)
+	if business != nil {
+		go func() { errs <- business.Serve() }()
+	}
 	select {
 	case err = <-errs:
 	case <-ctx.Done():
+	}
+	if business != nil {
+		business.Close()
 	}
 	shutdown, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
@@ -163,15 +177,15 @@ func runCapabilityProxy(cfg config.Config) error {
 	return nil
 }
 
-func proxyAdmin(p *capability.Proxy) http.Handler {
+func proxyAdmin(p *capability.Proxy, business *capability.BusinessServer) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
 	})
-	m.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
+	m.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		if !p.Ready() {
+		if !p.Ready() || (business != nil && !business.Ready(r.Context())) {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			_, _ = w.Write([]byte(`{"ready":false}`))
 			return

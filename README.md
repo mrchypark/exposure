@@ -114,6 +114,24 @@ Set `EXPOSURE_PROXY_ENABLED=true` and supply:
 - `EXPOSURE_PROVIDER_TOKEN_FILE`: private file containing the complete raw
   upstream Authorization value, required only for `service-token` mode.
 
+For an isolated loopback-only business unary gRPC proof, set
+`EXPOSURE_BUSINESS_GRPC_FILE` to a startup-only JSON file. This opt-in requires
+the gRPC learner and the explicit Goauthy USER client/resource profile. The
+closed JSON object contains `listen`, `upstream`, `catalogDigest`,
+`maxMessageBytes` and `methods`. Each method contains `capability` with the
+exact Grant business capability fields and `descriptor` with the base64-encoded
+exact FileDescriptorSet bytes. The file is limited to 2 MiB and is not reloaded.
+Both addresses must be literal loopback addresses with nonzero ports. Loopback
+restricts network reachability; it is not authentication and does not protect
+against other processes or containers sharing the network namespace.
+The operator must review that each fixed resource authorizes the whole RPC.
+The experimental upstream receives no Bearer or other credential, and this is
+not a production authentication or public TLS solution. A caller must supply a
+deadline no longer than `EXPOSURE_DEPENDENCY_TIMEOUT`. With this opt-in,
+readiness also requires a fresh validated business catalog matching the fixed
+method allowlist, fetched from the learner on each probe using the dependency
+timeout; it does not prove upstream service health.
+
 Both origins use the same neutral validator. Operations configuration selects
 their complete address, scheme and port at startup; no service name, Kubernetes
 suffix, network range or service-specific port is required. Canonical lowercase
