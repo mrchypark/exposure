@@ -13,6 +13,9 @@ func TestTrustedCredentialMode(t *testing.T) {
 	if valid.TrustedAudienceName() != "gateway" {
 		t.Fatalf("unexpected default audience: %q", valid.TrustedAudienceName())
 	}
+	if valid.TrustedClientIDName() != "gateway" {
+		t.Fatalf("unexpected default client ID: %q", valid.TrustedClientIDName())
+	}
 
 	custom := ProxyConfig{
 		CredentialMode:       "trusted",
@@ -26,6 +29,18 @@ func TestTrustedCredentialMode(t *testing.T) {
 	if custom.TrustedSubjectHeaderName() != "X-Grant-Subject" {
 		t.Fatalf("unexpected canonical subject header: %q", custom.TrustedSubjectHeaderName())
 	}
+	if custom.TrustedClientIDName() != "operable-gateway" {
+		t.Fatalf("expected TrustedClientIDName to fall back to TrustedAudienceName, got %q", custom.TrustedClientIDName())
+	}
+
+	split := custom
+	split.TrustedClientID = "operable"
+	if err := split.ValidateCredentialMode(); err != nil {
+		t.Fatalf("unexpected error for split client/audience: %v", err)
+	}
+	if split.TrustedAudienceName() != "operable-gateway" || split.TrustedClientIDName() != "operable" {
+		t.Fatalf("unexpected split values: audience=%q client=%q", split.TrustedAudienceName(), split.TrustedClientIDName())
+	}
 
 	for _, mutate := range []func(*ProxyConfig){
 		func(c *ProxyConfig) { c.TrustedGatewayKey = "" },
@@ -35,6 +50,7 @@ func TestTrustedCredentialMode(t *testing.T) {
 		func(c *ProxyConfig) { c.TrustedSubjectHeader = "X-Grant-Gateway-Key" },
 		func(c *ProxyConfig) { c.TrustedSubjectHeader = "Bad Header" },
 		func(c *ProxyConfig) { c.TrustedAudience = "bad audience" },
+		func(c *ProxyConfig) { c.TrustedClientID = "bad client" },
 		func(c *ProxyConfig) { c.GoauthyIssuer = "https://auth.example" },
 		func(c *ProxyConfig) { c.PocketBaseIssuer = "http://127.0.0.1:8090" },
 	} {
@@ -49,6 +65,7 @@ func TestTrustedCredentialMode(t *testing.T) {
 		{CredentialMode: "rauthy", TrustedGatewayKey: "gateway-secret"},
 		{CredentialMode: "goauthy", GoauthyIssuer: "https://auth.example", TrustedSubjectHeader: "X-Operable-Subject"},
 		{CredentialMode: "pocketbase", PocketBaseIssuer: "http://127.0.0.1:8090", PocketBaseCollectionID: "_pb_users_auth_", PocketBaseApplicationID: "app", TrustedAudience: "trusted"},
+		{CredentialMode: "rauthy", TrustedClientID: "operable"},
 	} {
 		if other.ValidateCredentialMode() == nil {
 			t.Fatalf("expected non-trusted mode with trusted fields to fail: %+v", other)
@@ -70,12 +87,13 @@ func TestLoadTrustedCredentialMode(t *testing.T) {
 	t.Setenv("EXPOSURE_TRUSTED_GATEWAY_KEY", "gateway-key")
 	t.Setenv("EXPOSURE_TRUSTED_SUBJECT_HEADER", "X-Operable-Subject")
 	t.Setenv("EXPOSURE_TRUSTED_AUDIENCE", "operable-gateway")
+	t.Setenv("EXPOSURE_TRUSTED_CLIENT_ID", "operable")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
-	if cfg.Proxy.CredentialMode != "trusted" || cfg.Proxy.TrustedGatewayKey != "gateway-key" || cfg.Proxy.TrustedSubjectHeaderName() != "X-Operable-Subject" || cfg.Proxy.TrustedAudienceName() != "operable-gateway" {
+	if cfg.Proxy.CredentialMode != "trusted" || cfg.Proxy.TrustedGatewayKey != "gateway-key" || cfg.Proxy.TrustedSubjectHeaderName() != "X-Operable-Subject" || cfg.Proxy.TrustedAudienceName() != "operable-gateway" || cfg.Proxy.TrustedClientIDName() != "operable" {
 		t.Fatalf("unexpected loaded trusted config: %+v", cfg.Proxy)
 	}
 }

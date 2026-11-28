@@ -142,12 +142,15 @@ func TestTrustedCredentialModeHTTP(t *testing.T) {
 					if r.Header.Get("X-Grant-Subject") != "user-123" {
 						t.Errorf("unexpected X-Grant-Subject: %q", r.Header.Get("X-Grant-Subject"))
 					}
+					if r.Header.Get("X-Grant-Client-ID") != "operable" {
+						t.Errorf("unexpected X-Grant-Client-ID: %q", r.Header.Get("X-Grant-Client-ID"))
+					}
 					var in map[string]any
 					if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 						t.Fatal(err)
 					}
 					cred, _ := in["providerCredential"].(map[string]any)
-					if cred["subject"] != "user-123" || cred["audience"] != "gateway" {
+					if cred["subject"] != "user-123" || cred["audience"] != "https://operable.dev.conalog.com/grant" {
 						t.Errorf("unexpected providerCredential: %#v", cred)
 					}
 					if in["providerCredentialDigest"] != credentialDigest("") {
@@ -221,6 +224,8 @@ func TestTrustedCredentialModeHTTP(t *testing.T) {
 				AppAuthKey:            "app-key",
 				CredentialMode:        "trusted",
 				TrustedGatewayKey:     gatewayKey,
+				TrustedAudience:       "https://operable.dev.conalog.com/grant",
+				TrustedClientID:       "operable",
 				MaxRequestBytes:       1 << 20,
 				MaxResponseBytes:      1 << 20,
 			}
@@ -291,7 +296,7 @@ func TestTrustedCredentialModeGRPCAndPublicAuthnSpoofRejection(t *testing.T) {
 				}
 				return ""
 			}
-			if !ok || first("x-grant-gateway-key") != gatewayKey || first("x-grant-subject") != "grpc-user" || first("authorization") != "" {
+			if !ok || first("x-grant-gateway-key") != gatewayKey || first("x-grant-subject") != "grpc-user" || first("x-grant-client-id") != "operable" || first("authorization") != "" {
 				t.Errorf("unexpected gRPC metadata: %#v", md)
 			}
 			cred := in["providerCredential"].(map[string]any)
@@ -347,7 +352,8 @@ func TestTrustedCredentialModeGRPCAndPublicAuthnSpoofRejection(t *testing.T) {
 		CredentialMode:            "trusted",
 		TrustedGatewayKey:         gatewayKey,
 		TrustedSubjectHeader:      "X-Grant-Subject",
-		TrustedAudience:           "operable-gateway",
+		TrustedAudience:           "https://operable.dev.conalog.com/grant",
+		TrustedClientID:           "operable",
 		MaxRequestBytes:           1 << 20,
 		MaxResponseBytes:          1 << 20,
 		PublicAuthnGlobalCapacity: 10,

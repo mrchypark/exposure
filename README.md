@@ -116,11 +116,13 @@ Set `EXPOSURE_PROXY_ENABLED=true` and supply:
 - `EXPOSURE_CREDENTIAL_MODE=trusted`: trusted gateway mode for pre-authenticated
   internal callers. Requires `EXPOSURE_TRUSTED_GATEWAY_KEY` (verified against
   `X-Grant-Gateway-Key`) and optionally `EXPOSURE_TRUSTED_SUBJECT_HEADER`
-  (default `X-Operable-Subject`) and `EXPOSURE_TRUSTED_AUDIENCE` (default
-  `gateway`). Exposure forwards `X-Grant-Gateway-Key`, `X-Grant-Subject`, and
-  `X-Grant-Client-ID` (without `Authorization`) to Grant's learner `decide` endpoint, strips
-  gateway keys before upstream, and forwards the verified subject header in
-  `forward-user` mode.
+  (default `X-Operable-Subject`), `EXPOSURE_TRUSTED_AUDIENCE` (default
+  `gateway`, sent as `providerCredential.audience`), and optional
+  `EXPOSURE_TRUSTED_CLIENT_ID` (defaults to `EXPOSURE_TRUSTED_AUDIENCE`, sent as
+  `X-Grant-Client-ID`). Exposure forwards `X-Grant-Gateway-Key`,
+  `X-Grant-Subject`, and `X-Grant-Client-ID` (without `Authorization`) to
+  Grant's learner `decide` endpoint, strips gateway keys before upstream, and
+  forwards the verified subject header in `forward-user` mode.
 
 For an isolated loopback-only business unary gRPC proof, set
 `EXPOSURE_BUSINESS_GRPC_FILE` to a startup-only JSON file. This opt-in requires

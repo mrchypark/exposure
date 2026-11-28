@@ -40,6 +40,7 @@ type ProxyConfig struct {
 	GoauthyIssuer, GoauthyApplicationID                                string
 	GoauthyUserClientID, GoauthyUserResourceAudience                   string
 	TrustedGatewayKey, TrustedSubjectHeader, TrustedAudience           string
+	TrustedClientID                                                    string
 	MaxRequestBytes, MaxResponseBytes                                  int64
 	PublicAuthnGlobalCapacity, PublicAuthnPeerCapacity                 int
 	PublicAuthnGlobalRefill, PublicAuthnPeerRefill                     time.Duration
@@ -86,7 +87,7 @@ func Load() (Config, error) {
 		PocketBaseIssuer: os.Getenv("EXPOSURE_POCKETBASE_ISSUER"), PocketBaseApplicationID: os.Getenv("EXPOSURE_POCKETBASE_APPLICATION_ID"),
 		GoauthyIssuer: os.Getenv("EXPOSURE_GOAUTHY_ISSUER"), GoauthyApplicationID: os.Getenv("EXPOSURE_GOAUTHY_APPLICATION_ID"),
 		GoauthyUserClientID: os.Getenv("EXPOSURE_GOAUTHY_USER_CLIENT_ID"), GoauthyUserResourceAudience: os.Getenv("EXPOSURE_GOAUTHY_USER_RESOURCE_AUDIENCE"),
-		TrustedGatewayKey: os.Getenv("EXPOSURE_TRUSTED_GATEWAY_KEY"), TrustedSubjectHeader: os.Getenv("EXPOSURE_TRUSTED_SUBJECT_HEADER"), TrustedAudience: os.Getenv("EXPOSURE_TRUSTED_AUDIENCE"),
+		TrustedGatewayKey: os.Getenv("EXPOSURE_TRUSTED_GATEWAY_KEY"), TrustedSubjectHeader: os.Getenv("EXPOSURE_TRUSTED_SUBJECT_HEADER"), TrustedAudience: os.Getenv("EXPOSURE_TRUSTED_AUDIENCE"), TrustedClientID: os.Getenv("EXPOSURE_TRUSTED_CLIENT_ID"),
 		MaxRequestBytes: int64(c.MaxResponseBytes), MaxResponseBytes: int64(c.MaxResponseBytes),
 		PublicAuthnGlobalCapacity: 64, PublicAuthnPeerCapacity: 8, PublicAuthnGlobalRefill: time.Second, PublicAuthnPeerRefill: time.Second,
 	}
@@ -217,11 +218,11 @@ func (c ProxyConfig) ValidateCredentialMode() error {
 	}
 	switch c.CredentialMode {
 	case "", "rauthy":
-		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" {
+		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" || c.TrustedClientID != "" {
 			return fmt.Errorf("credential mode has provider-specific configuration")
 		}
 	case "pocketbase":
-		if c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" {
+		if c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" || c.TrustedClientID != "" {
 			return fmt.Errorf("Goauthy or trusted configuration requires matching credential mode")
 		}
 		if !PocketBaseID(c.PocketBaseCollectionID) || c.PocketBaseApplicationID == "" || strings.ContainsAny(c.PocketBaseApplicationID, " \t\r\n") {
@@ -232,7 +233,7 @@ func (c ProxyConfig) ValidateCredentialMode() error {
 			return fmt.Errorf("pocketbase issuer must be a canonical origin without a path or default port")
 		}
 	case "goauthy":
-		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" || strings.ContainsAny(c.GoauthyApplicationID, " \t\r\n") {
+		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" || c.TrustedClientID != "" || strings.ContainsAny(c.GoauthyApplicationID, " \t\r\n") {
 			return fmt.Errorf("invalid goauthy credential configuration")
 		}
 		u, err := url.Parse(c.GoauthyIssuer)
@@ -251,6 +252,9 @@ func (c ProxyConfig) ValidateCredentialMode() error {
 		}
 		if c.TrustedAudience != "" && !validTrustedToken(c.TrustedAudience) {
 			return fmt.Errorf("trusted credential mode requires a valid audience")
+		}
+		if c.TrustedClientID != "" && !validTrustedToken(c.TrustedClientID) {
+			return fmt.Errorf("trusted credential mode requires a valid client ID")
 		}
 	default:
 		return fmt.Errorf("unsupported credential mode")
@@ -274,6 +278,16 @@ func (c ProxyConfig) TrustedAudienceName() string {
 		return c.TrustedAudience
 	}
 	return "gateway"
+}
+
+// TrustedClientIDName returns the configured client ID header value
+// (X-Grant-Client-ID) for trusted gateway mode, falling back to
+// TrustedAudienceName when unset.
+func (c ProxyConfig) TrustedClientIDName() string {
+	if c.TrustedClientID != "" {
+		return c.TrustedClientID
+	}
+	return c.TrustedAudienceName()
 }
 
 func validTrustedToken(v string) bool {

@@ -893,7 +893,7 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 		var statusCode int
 		var trustedKey, trustedSub, trustedClient string
 		if p.cfg.CredentialMode == "trusted" {
-			trustedKey, trustedSub, trustedClient = p.cfg.TrustedGatewayKey, subject, p.cfg.TrustedAudienceName()
+			trustedKey, trustedSub, trustedClient = p.cfg.TrustedGatewayKey, subject, p.cfg.TrustedClientIDName()
 		}
 		out, statusCode, err = p.learner.decide(ctx, b, auth, org, p.cfg.AppAuthKey, trustedKey, trustedSub, trustedClient)
 		if statusCode == 401 {
@@ -913,7 +913,7 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 		if p.cfg.CredentialMode == "trusted" {
 			req.Header.Set("X-Grant-Gateway-Key", p.cfg.TrustedGatewayKey)
 			req.Header.Set("X-Grant-Subject", subject)
-			req.Header.Set("X-Grant-Client-ID", p.cfg.TrustedAudienceName())
+			req.Header.Set("X-Grant-Client-ID", p.cfg.TrustedClientIDName())
 		} else {
 			req.Header.Set("Authorization", auth)
 		}
