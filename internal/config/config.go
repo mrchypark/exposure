@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -38,6 +39,7 @@ type ProxyConfig struct {
 	PocketBaseIssuer, PocketBaseApplicationID                          string
 	GoauthyIssuer, GoauthyApplicationID                                string
 	GoauthyUserClientID, GoauthyUserResourceAudience                   string
+	TrustedGatewayKey, TrustedSubjectHeader, TrustedAudience           string
 	MaxRequestBytes, MaxResponseBytes                                  int64
 	PublicAuthnGlobalCapacity, PublicAuthnPeerCapacity                 int
 	PublicAuthnGlobalRefill, PublicAuthnPeerRefill                     time.Duration
@@ -84,6 +86,7 @@ func Load() (Config, error) {
 		PocketBaseIssuer: os.Getenv("EXPOSURE_POCKETBASE_ISSUER"), PocketBaseApplicationID: os.Getenv("EXPOSURE_POCKETBASE_APPLICATION_ID"),
 		GoauthyIssuer: os.Getenv("EXPOSURE_GOAUTHY_ISSUER"), GoauthyApplicationID: os.Getenv("EXPOSURE_GOAUTHY_APPLICATION_ID"),
 		GoauthyUserClientID: os.Getenv("EXPOSURE_GOAUTHY_USER_CLIENT_ID"), GoauthyUserResourceAudience: os.Getenv("EXPOSURE_GOAUTHY_USER_RESOURCE_AUDIENCE"),
+		TrustedGatewayKey: os.Getenv("EXPOSURE_TRUSTED_GATEWAY_KEY"), TrustedSubjectHeader: os.Getenv("EXPOSURE_TRUSTED_SUBJECT_HEADER"), TrustedAudience: os.Getenv("EXPOSURE_TRUSTED_AUDIENCE"),
 		MaxRequestBytes: int64(c.MaxResponseBytes), MaxResponseBytes: int64(c.MaxResponseBytes),
 		PublicAuthnGlobalCapacity: 64, PublicAuthnPeerCapacity: 8, PublicAuthnGlobalRefill: time.Second, PublicAuthnPeerRefill: time.Second,
 	}
@@ -214,12 +217,12 @@ func (c ProxyConfig) ValidateCredentialMode() error {
 	}
 	switch c.CredentialMode {
 	case "", "rauthy":
-		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" {
+		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" {
 			return fmt.Errorf("credential mode has provider-specific configuration")
 		}
 	case "pocketbase":
-		if c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" {
-			return fmt.Errorf("Goauthy configuration requires goauthy credential mode")
+		if c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" {
+			return fmt.Errorf("Goauthy or trusted configuration requires matching credential mode")
 		}
 		if !PocketBaseID(c.PocketBaseCollectionID) || c.PocketBaseApplicationID == "" || strings.ContainsAny(c.PocketBaseApplicationID, " \t\r\n") {
 			return fmt.Errorf("pocketbase credential mode requires fixed collection and application IDs")
@@ -229,17 +232,71 @@ func (c ProxyConfig) ValidateCredentialMode() error {
 			return fmt.Errorf("pocketbase issuer must be a canonical origin without a path or default port")
 		}
 	case "goauthy":
-		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || strings.ContainsAny(c.GoauthyApplicationID, " \t\r\n") {
+		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.TrustedGatewayKey != "" || c.TrustedSubjectHeader != "" || c.TrustedAudience != "" || strings.ContainsAny(c.GoauthyApplicationID, " \t\r\n") {
 			return fmt.Errorf("invalid goauthy credential configuration")
 		}
 		u, err := url.Parse(c.GoauthyIssuer)
 		if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.Host != strings.ToLower(u.Host) || u.User != nil || u.Path != "" || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.Opaque != "" || strings.HasSuffix(u.Host, ":") || u.Port() == "443" {
 			return fmt.Errorf("goauthy issuer must be a canonical HTTPS origin without a path or default port")
 		}
+	case "trusted":
+		if c.PocketBaseCollectionID != "" || c.PocketBaseIssuer != "" || c.PocketBaseApplicationID != "" || c.GoauthyIssuer != "" || c.GoauthyApplicationID != "" {
+			return fmt.Errorf("invalid trusted credential configuration")
+		}
+		if !validTrustedToken(c.TrustedGatewayKey) {
+			return fmt.Errorf("trusted credential mode requires a valid gateway key")
+		}
+		if c.TrustedSubjectHeader != "" && !validTrustedSubjectHeader(c.TrustedSubjectHeader) {
+			return fmt.Errorf("trusted credential mode requires a valid subject header")
+		}
+		if c.TrustedAudience != "" && !validTrustedToken(c.TrustedAudience) {
+			return fmt.Errorf("trusted credential mode requires a valid audience")
+		}
 	default:
 		return fmt.Errorf("unsupported credential mode")
 	}
 	return nil
+}
+
+// TrustedSubjectHeaderName returns the configured subject header for trusted
+// gateway mode, defaulting to X-Operable-Subject.
+func (c ProxyConfig) TrustedSubjectHeaderName() string {
+	if c.TrustedSubjectHeader != "" {
+		return http.CanonicalHeaderKey(c.TrustedSubjectHeader)
+	}
+	return "X-Operable-Subject"
+}
+
+// TrustedAudienceName returns the configured audience identifier for trusted
+// gateway mode, defaulting to "gateway" (matching Grant's default client ID).
+func (c ProxyConfig) TrustedAudienceName() string {
+	if c.TrustedAudience != "" {
+		return c.TrustedAudience
+	}
+	return "gateway"
+}
+
+func validTrustedToken(v string) bool {
+	if v == "" || len(v) > 512 || !utf8.ValidString(v) || strings.TrimSpace(v) != v {
+		return false
+	}
+	return strings.IndexFunc(v, func(r rune) bool { return r <= 32 || r == 127 }) < 0
+}
+
+func validTrustedSubjectHeader(name string) bool {
+	if name == "" || len(name) > 128 {
+		return false
+	}
+	for _, r := range name {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-') {
+			return false
+		}
+	}
+	switch http.CanonicalHeaderKey(name) {
+	case "Authorization", "Proxy-Authorization", "Cookie", "Host", "Connection", "Content-Length", "Content-Type", "X-Organization-Id", "X-Grant-App-Auth-Key", "X-Grant-Gateway-Key", "X-Correlation-Id":
+		return false
+	}
+	return true
 }
 
 func PocketBaseID(v string) bool {

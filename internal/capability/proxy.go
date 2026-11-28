@@ -9,6 +9,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -247,7 +248,7 @@ func (p *Proxy) acceptCatalog(b []byte) error {
 }
 func (p *Proxy) validateCatalog(c *catalog) error {
 	if c.AuthorizationMode == "user" {
-		if c.PepPolicyRevision <= 0 || p.cfg.CredentialMode != "goauthy" {
+		if c.PepPolicyRevision <= 0 || (p.cfg.CredentialMode != "goauthy" && p.cfg.CredentialMode != "trusted") {
 			return errors.New("unsupported user policy")
 		}
 	} else if c.AuthorizationMode != "" || c.PepPolicyRevision != 0 || p.cfg.CredentialMode == "goauthy" && p.cfg.GoauthyApplicationID == "" {
@@ -477,16 +478,17 @@ func (p *Proxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var authorizedUntil time.Time
+	var authorizedSubject string
 	var proof *responseProof
 	if expansions != nil {
 		proof = &responseProof{requestBinding: randomBinding()}
 	}
 	if cap.AccessMode == "authorized" {
-		if err := p.authorize(r.Context(), r, c, *cap, query, headers, body, resourceValue, evidence, &upstreamQuery, children, &authorizedUntil, proof); err != nil {
+		if err := p.authorize(r.Context(), r, c, *cap, query, headers, body, resourceValue, evidence, &upstreamQuery, children, &authorizedUntil, &authorizedSubject, proof); err != nil {
 			p.writeDecisionError(w, err)
 			return
 		}
-	} else if hasCredential(r) {
+	} else if hasCredentialForConfig(r, p.cfg) {
 		errorJSON(w, 422, "invalid_request")
 		return
 	}
@@ -496,6 +498,9 @@ func (p *Proxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		r = r.WithContext(context.WithValue(r.Context(), authorizationExpiryKey{}, authorizedUntil))
+	}
+	if authorizedSubject != "" {
+		r = r.WithContext(context.WithValue(r.Context(), trustedSubjectKey{}, authorizedSubject))
 	}
 	// Policy evaluates decoded canonical values, but the service receives the
 	// exact original query spelling and order from this same checked request.
@@ -519,7 +524,7 @@ func (p *Proxy) serveHTTP(w http.ResponseWriter, r *http.Request) {
 			proof.digest = shaBytes(data)
 			proof.length = uint64(len(data))
 			proof.references = refs
-			if err = p.authorize(r.Context(), r, c, *cap, query, headers, body, resourceValue, evidence, &upstreamQuery, nil, &authorizedUntil, proof); err != nil {
+			if err = p.authorize(r.Context(), r, c, *cap, query, headers, body, resourceValue, evidence, &upstreamQuery, nil, &authorizedUntil, &authorizedSubject, proof); err != nil {
 				return err
 			}
 			if !authorizedUntil.After(time.Now()) {
@@ -833,13 +838,21 @@ func validScalar(format, v string) bool {
 	return true
 }
 
-func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap capability, query string, headers http.Header, body *preparedBody, resourceID string, evidence map[string]string, upstreamQuery *string, children []batchChild, authorizedUntil *time.Time, proof *responseProof) error {
-	auth, org, subject, audience, err := bearerIdentityWithOrganization(r, p.cfg, cap.OrganizationContext == "optional")
-	if c.AuthorizationMode == "user" {
+func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap capability, query string, headers http.Header, body *preparedBody, resourceID string, evidence map[string]string, upstreamQuery *string, children []batchChild, authorizedUntil *time.Time, authorizedSubject *string, proof *responseProof) error {
+	var auth, org, subject, audience string
+	var err error
+	if p.cfg.CredentialMode == "trusted" {
+		org, subject, audience, err = trustedIdentity(r, p.cfg, cap.OrganizationContext == "optional")
+	} else if c.AuthorizationMode == "user" {
 		auth, org, subject, audience, err = userBearerIdentity(r, p.cfg, cap.OrganizationContext == "optional")
+	} else {
+		auth, org, subject, audience, err = bearerIdentityWithOrganization(r, p.cfg, cap.OrganizationContext == "optional")
 	}
 	if err != nil {
 		return decisionError{http.StatusUnauthorized, "unauthorized"}
+	}
+	if authorizedSubject != nil && p.cfg.CredentialMode == "trusted" {
+		*authorizedSubject = subject
 	}
 	requestBinding := randomBinding()
 	if proof != nil {
@@ -878,7 +891,11 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 	var out []byte
 	if p.learner != nil {
 		var statusCode int
-		out, statusCode, err = p.learner.decide(ctx, b, auth, org, p.cfg.AppAuthKey)
+		var trustedKey, trustedSub, trustedClient string
+		if p.cfg.CredentialMode == "trusted" {
+			trustedKey, trustedSub, trustedClient = p.cfg.TrustedGatewayKey, subject, p.cfg.TrustedAudienceName()
+		}
+		out, statusCode, err = p.learner.decide(ctx, b, auth, org, p.cfg.AppAuthKey, trustedKey, trustedSub, trustedClient)
 		if statusCode == 401 {
 			return decisionError{401, "unauthorized"}
 		}
@@ -893,7 +910,13 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 		if err != nil {
 			return err
 		}
-		req.Header.Set("Authorization", auth)
+		if p.cfg.CredentialMode == "trusted" {
+			req.Header.Set("X-Grant-Gateway-Key", p.cfg.TrustedGatewayKey)
+			req.Header.Set("X-Grant-Subject", subject)
+			req.Header.Set("X-Grant-Client-ID", p.cfg.TrustedAudienceName())
+		} else {
+			req.Header.Set("Authorization", auth)
+		}
 		if org != "" {
 			req.Header.Set("X-Organization-ID", org)
 		}
@@ -1013,6 +1036,7 @@ func (p *Proxy) authorize(ctx context.Context, r *http.Request, c *catalog, cap 
 }
 
 type authorizationExpiryKey struct{}
+type trustedSubjectKey struct{}
 
 func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, cap capability, query string, headers http.Header, body *preparedBody, checks ...func([]byte, http.Header, int) error) {
 	u := *p.origin
@@ -1027,9 +1051,21 @@ func (p *Proxy) forward(w http.ResponseWriter, r *http.Request, cap capability, 
 	}
 	req.Header = headers.Clone()
 	req.ContentLength = body.length()
+	if p.cfg.CredentialMode == "trusted" {
+		req.Header.Del("X-Grant-Gateway-Key")
+		req.Header.Del("X-Grant-Subject")
+		req.Header.Del(p.cfg.TrustedSubjectHeaderName())
+	}
 	if cap.AccessMode == "authorized" {
 		if p.cfg.AuthorizationMode == "service-token" {
 			req.Header.Set("Authorization", p.cfg.UpstreamToken)
+		} else if p.cfg.CredentialMode == "trusted" {
+			if sub, ok := r.Context().Value(trustedSubjectKey{}).(string); ok && sub != "" {
+				req.Header.Set(p.cfg.TrustedSubjectHeaderName(), sub)
+			}
+			if auth := r.Header.Get("Authorization"); auth != "" {
+				req.Header.Set("Authorization", auth)
+			}
 		} else {
 			req.Header.Set("Authorization", r.Header.Get("Authorization"))
 		}
@@ -1327,6 +1363,46 @@ func retryAfter(global, peer tokenBucket, globalEvery, peerEvery time.Duration) 
 }
 func hasCredential(r *http.Request) bool {
 	return r.Header.Get("Authorization") != "" || r.Header.Get("Proxy-Authorization") != "" || r.URL.Query().Get("access_token") != "" || r.Header.Get("Cookie") != ""
+}
+
+func hasCredentialForConfig(r *http.Request, cfg config.ProxyConfig) bool {
+	if hasCredential(r) {
+		return true
+	}
+	if cfg.CredentialMode == "trusted" {
+		return len(r.Header.Values("X-Grant-Gateway-Key")) != 0 ||
+			len(r.Header.Values("X-Grant-Subject")) != 0 ||
+			len(r.Header.Values(cfg.TrustedSubjectHeaderName())) != 0
+	}
+	return false
+}
+
+func trustedIdentity(r *http.Request, cfg config.ProxyConfig, allowOrgless bool) (string, string, string, error) {
+	if cfg.TrustedGatewayKey == "" {
+		return "", "", "", errors.New("trusted gateway key missing")
+	}
+	subjectHeader := cfg.TrustedSubjectHeaderName()
+	if r.Header.Get("Proxy-Authorization") != "" || r.Header.Get("Cookie") != "" || r.URL.Query().Get("access_token") != "" ||
+		connectionNominates(r.Header, "Authorization") || connectionNominates(r.Header, "X-Grant-Gateway-Key") || connectionNominates(r.Header, subjectHeader) {
+		return "", "", "", errors.New("auth")
+	}
+	gatewayKeys := r.Header.Values("X-Grant-Gateway-Key")
+	if len(gatewayKeys) != 1 || subtle.ConstantTimeCompare([]byte(gatewayKeys[0]), []byte(cfg.TrustedGatewayKey)) != 1 {
+		return "", "", "", errors.New("trusted gateway key mismatch")
+	}
+	org := r.Header.Get("X-Organization-ID")
+	if (org == "" && (!allowOrgless || len(r.Header.Values("X-Organization-ID")) != 0)) || (org != "" && len(r.Header.Values("X-Organization-ID")) != 1) {
+		return "", "", "", errors.New("org")
+	}
+	subjects := r.Header.Values(subjectHeader)
+	if len(subjects) != 1 {
+		return "", "", "", errors.New("trusted subject missing")
+	}
+	sub := subjects[0]
+	if sub == "" || strings.TrimSpace(sub) != sub || len(sub) > 512 || !utf8.ValidString(sub) || strings.IndexFunc(sub, func(r rune) bool { return r < 32 || r == 127 }) >= 0 {
+		return "", "", "", errors.New("invalid trusted subject")
+	}
+	return org, sub, cfg.TrustedAudienceName(), nil
 }
 func bearerIdentity(r *http.Request, cfg config.ProxyConfig) (string, string, string, string, error) {
 	return bearerIdentityWithOrganization(r, cfg, false)

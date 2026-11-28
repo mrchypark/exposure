@@ -73,7 +73,7 @@ func TestGRPCLearnerErrorMappingAndLimits(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Cleanup(func() { p.CloseGRPCLearner() })
-			_, code, err := p.learner.decide(context.Background(), []byte(`{"n":9007199254740993}`), "Bearer token", "org", "key")
+			_, code, err := p.learner.decide(context.Background(), []byte(`{"n":9007199254740993}`), "Bearer token", "org", "key", "", "", "")
 			if err == nil || code != tc.want {
 				t.Fatalf("got code %d error %v", code, err)
 			}
@@ -99,11 +99,11 @@ func TestGRPCLearnerExactBytesAndMetadata(t *testing.T) {
 	if err != nil || string(b) != `{"catalog":true}` {
 		t.Fatalf("catalog: %s %v", b, err)
 	}
-	b, code, err := p.learner.decide(context.Background(), []byte(`{"n":9007199254740993}`), "Bearer token", "org", "key")
+	b, code, err := p.learner.decide(context.Background(), []byte(`{"n":9007199254740993}`), "Bearer token", "org", "key", "", "", "")
 	if err != nil || code != 0 || string(b) != `{"allowed":false}` {
 		t.Fatalf("decision: %s %d %v", b, code, err)
 	}
-	_, _, err = p.learner.decide(context.Background(), make([]byte, grpcPayloadLimit+1), "Bearer token", "org", "key")
+	_, _, err = p.learner.decide(context.Background(), make([]byte, grpcPayloadLimit+1), "Bearer token", "org", "key", "", "", "")
 	if err == nil {
 		t.Fatal("oversized evidence accepted")
 	}

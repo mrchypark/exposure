@@ -70,13 +70,22 @@ func (g *grpcLearner) catalog(ctx context.Context, provider, appKey string) ([]b
 	return r.GetCatalogJson(), nil
 }
 
-func (g *grpcLearner) decide(ctx context.Context, evidence []byte, authorization, org, appKey string) ([]byte, int, error) {
+func (g *grpcLearner) decide(ctx context.Context, evidence []byte, authorization, org, appKey, trustedGatewayKey, trustedSubject, trustedClientID string) ([]byte, int, error) {
 	if len(evidence) > grpcPayloadLimit {
 		return nil, 0, fmt.Errorf("evidence exceeds limit")
 	}
 	ctx, cancel := context.WithTimeout(ctx, g.timeout)
 	defer cancel()
-	md := metadata.Pairs("x-grant-app-auth-key", appKey, "authorization", authorization)
+	md := metadata.Pairs("x-grant-app-auth-key", appKey)
+	if trustedGatewayKey != "" {
+		md.Set("x-grant-gateway-key", trustedGatewayKey)
+		md.Set("x-grant-subject", trustedSubject)
+		if trustedClientID != "" {
+			md.Set("x-grant-client-id", trustedClientID)
+		}
+	} else {
+		md.Set("authorization", authorization)
+	}
 	if org != "" {
 		md.Set("x-organization-id", org)
 	}
